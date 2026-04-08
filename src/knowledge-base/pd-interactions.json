@@ -130,5 +130,38 @@
     "consequence": "Additive hypotension and orthostatic hypotension when combined with antihypertensives or PDE5 inhibitors",
     "source": "Beers Criteria 2023; FDA labeling",
     "riskScoreWeight": 2
+  },
+  {
+    "id": "pd_013",
+    "class": "BLEEDING_RISK",
+    "drugClass": "Antiplatelet agents",
+    "specificDrugs": ["aspirin", "clopidogrel", "prasugrel", "ticagrelor", "ticlopidine", "dipyridamole"],
+    "mechanism": "Irreversible COX-1 inhibition (aspirin) or P2Y12 ADP receptor antagonism — reduces platelet aggregation via mechanism distinct from anticoagulants",
+    "severity": "HIGH",
+    "consequence": "Dual antithrombotic therapy (antiplatelet + anticoagulant) increases major bleeding by 60-80% vs anticoagulant alone; intracranial and GI hemorrhage risk significantly elevated",
+    "source": "WOEST trial, Lancet 2013; ACC/AHA Dual Antithrombotic Therapy Guidelines 2023; Beers Criteria 2023",
+    "riskScoreWeight": 3
+  },
+  {
+    "id": "pd_014",
+    "class": "HYPERKALEMIA",
+    "drugClass": "ACE inhibitors",
+    "specificDrugs": ["lisinopril", "enalapril", "ramipril", "benazepril", "captopril", "perindopril", "quinapril"],
+    "mechanism": "Inhibition of angiotensin II-mediated aldosterone secretion — reduces renal potassium excretion",
+    "severity": "HIGH",
+    "consequence": "Hyperkalemia risk when combined with potassium supplements, potassium-sparing diuretics, or ARBs; risk amplified in CKD Stage 3-5 (eGFR < 45) where renal potassium excretion is already impaired",
+    "source": "Einhorn et al. Archives of Internal Medicine 2009; KDIGO CKD Guidelines 2024",
+    "riskScoreWeight": 3
+  },
+  {
+    "id": "pd_015",
+    "class": "HYPERKALEMIA",
+    "drugClass": "Potassium supplements",
+    "specificDrugs": ["potassium chloride", "potassium citrate", "potassium gluconate", "klor-con"],
+    "mechanism": "Direct potassium loading — elevates serum potassium directly",
+    "severity": "HIGH",
+    "consequence": "Hyperkalemia risk in CKD patients, especially when combined with ACE inhibitors, ARBs, or potassium-sparing diuretics; cardiac arrhythmia and cardiac arrest at K+ > 6.5 mEq/L",
+    "source": "Palmer & Clegg NEJM 2015; KDIGO CKD Guidelines 2024",
+    "riskScoreWeight": 3
   }
 ]
