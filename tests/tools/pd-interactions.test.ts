@@ -59,4 +59,38 @@ describe('analyzePDInteractions', () => {
     // May return 0 or low-severity findings — just verify it does not throw
     expect(Array.isArray(findings)).toBe(true);
   });
+
+  it('detects warfarin + aspirin BLEEDING_RISK via cross-class match', async () => {
+    const findings = await analyzePDInteractions({
+      medications: ['warfarin 5mg', 'aspirin 81mg'],
+    });
+    const bleeding = findings.filter(f => f.class === 'BLEEDING_RISK');
+    expect(bleeding.length).toBeGreaterThan(0);
+    expect(bleeding[0].severity).toMatch(/CRITICAL|HIGH/);
+  });
+
+  it('detects lisinopril + potassium chloride HYPERKALEMIA risk', async () => {
+    const findings = await analyzePDInteractions({
+      medications: ['lisinopril 20mg', 'potassium chloride 20mEq'],
+    });
+    const hyper = findings.filter(f => f.class === 'HYPERKALEMIA');
+    expect(hyper.length).toBeGreaterThan(0);
+  });
+
+  it('detects triple-agent bleeding risk (warfarin + aspirin + NSAID)', async () => {
+    const findings = await analyzePDInteractions({
+      medications: ['warfarin 5mg', 'aspirin 81mg', 'ibuprofen 400mg'],
+    });
+    const bleeding = findings.filter(f => f.class === 'BLEEDING_RISK');
+    expect(bleeding.length).toBeGreaterThan(0);
+    expect(bleeding[0].contributingDrugs.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('returns no CRITICAL findings for unrelated safe drugs', async () => {
+    const findings = await analyzePDInteractions({
+      medications: ['atorvastatin 20mg', 'amlodipine 5mg'],
+    });
+    const critical = findings.filter(f => f.severity === 'CRITICAL');
+    expect(critical.length).toBe(0);
+  });
 });
