@@ -86,7 +86,7 @@ export interface PharmacyReviewItem {
 }
 
 // Pharmacodynamic interaction types
-export type PDClass = 'CNS_DEPRESSION' | 'QT_PROLONGATION' | 'BLEEDING_RISK' | 'SEROTONIN_SYNDROME' | 'HYPOTENSION';
+export type PDClass = 'CNS_DEPRESSION' | 'QT_PROLONGATION' | 'BLEEDING_RISK' | 'SEROTONIN_SYNDROME' | 'HYPOTENSION' | 'HYPERKALEMIA';
 
 export interface PDInteractionEntry {
   id: string;
