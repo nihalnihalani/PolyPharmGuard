@@ -1,0 +1,16 @@
+[
+  { "drug": "fluconazole", "rxnormCui": "4083", "inhibitions": [{ "enzyme": "CYP3A4", "strength": "strong_inhibitor", "source": "FDA Drug Interactions Table 2024" }, { "enzyme": "CYP2C19", "strength": "strong_inhibitor", "source": "FDA Drug Interactions Table 2024" }, { "enzyme": "CYP2C9", "strength": "moderate_inhibitor", "source": "FDA Drug Interactions Table 2024" }] },
+  { "drug": "omeprazole", "rxnormCui": "7646", "inhibitions": [{ "enzyme": "CYP2C19", "strength": "weak_inhibitor", "source": "FDA Drug Interactions Table 2024" }] },
+  { "drug": "amlodipine", "rxnormCui": "17767", "inhibitions": [{ "enzyme": "CYP3A4", "strength": "weak_inhibitor", "source": "FDA Drug Interactions Table 2024" }] },
+  { "drug": "clarithromycin", "rxnormCui": "21212", "inhibitions": [{ "enzyme": "CYP3A4", "strength": "strong_inhibitor", "source": "FDA Drug Interactions Table 2024" }] },
+  { "drug": "erythromycin", "rxnormCui": "4053", "inhibitions": [{ "enzyme": "CYP3A4", "strength": "moderate_inhibitor", "source": "FDA Drug Interactions Table 2024" }] },
+  { "drug": "itraconazole", "rxnormCui": "28235", "inhibitions": [{ "enzyme": "CYP3A4", "strength": "strong_inhibitor", "source": "FDA Drug Interactions Table 2024" }] },
+  { "drug": "ketoconazole", "rxnormCui": "6136", "inhibitions": [{ "enzyme": "CYP3A4", "strength": "strong_inhibitor", "source": "FDA Drug Interactions Table 2024" }, { "enzyme": "CYP2C9", "strength": "moderate_inhibitor", "source": "FDA Drug Interactions Table 2024" }] },
+  { "drug": "verapamil", "rxnormCui": "11170", "inhibitions": [{ "enzyme": "CYP3A4", "strength": "moderate_inhibitor", "source": "FDA Drug Interactions Table 2024" }] },
+  { "drug": "diltiazem", "rxnormCui": "3441", "inhibitions": [{ "enzyme": "CYP3A4", "strength": "moderate_inhibitor", "source": "FDA Drug Interactions Table 2024" }] },
+  { "drug": "amiodarone", "rxnormCui": "703", "inhibitions": [{ "enzyme": "CYP2C9", "strength": "moderate_inhibitor", "source": "FDA Drug Interactions Table 2024" }, { "enzyme": "CYP2D6", "strength": "moderate_inhibitor", "source": "FDA Drug Interactions Table 2024" }, { "enzyme": "CYP3A4", "strength": "weak_inhibitor", "source": "FDA Drug Interactions Table 2024" }] },
+  { "drug": "paroxetine", "rxnormCui": "32937", "inhibitions": [{ "enzyme": "CYP2D6", "strength": "strong_inhibitor", "source": "FDA Drug Interactions Table 2024" }] },
+  { "drug": "fluoxetine", "rxnormCui": "4493", "inhibitions": [{ "enzyme": "CYP2D6", "strength": "strong_inhibitor", "source": "FDA Drug Interactions Table 2024" }, { "enzyme": "CYP2C9", "strength": "moderate_inhibitor", "source": "FDA Drug Interactions Table 2024" }, { "enzyme": "CYP3A4", "strength": "weak_inhibitor", "source": "FDA Drug Interactions Table 2024" }] },
+  { "drug": "sertraline", "rxnormCui": "36437", "inhibitions": [{ "enzyme": "CYP2D6", "strength": "moderate_inhibitor", "source": "FDA Drug Interactions Table 2024" }] },
+  { "drug": "cimetidine", "rxnormCui": "2541", "inhibitions": [{ "enzyme": "CYP1A2", "strength": "moderate_inhibitor", "source": "FDA Drug Interactions Table 2024" }, { "enzyme": "CYP2D6", "strength": "moderate_inhibitor", "source": "FDA Drug Interactions Table 2024" }, { "enzyme": "CYP3A4", "strength": "weak_inhibitor", "source": "FDA Drug Interactions Table 2024" }] }
+]
