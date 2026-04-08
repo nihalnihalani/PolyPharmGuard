@@ -1,0 +1,134 @@
+[
+  {
+    "id": "pd_001",
+    "class": "CNS_DEPRESSION",
+    "drugClass": "Opioid analgesics",
+    "specificDrugs": ["oxycodone", "morphine", "hydrocodone", "codeine", "tramadol", "fentanyl"],
+    "mechanism": "Mu-opioid receptor agonism causing CNS and respiratory depression",
+    "severity": "CRITICAL",
+    "consequence": "Additive respiratory depression, sedation, coma, death when combined with other CNS depressants",
+    "source": "FDA Drug Safety Communication: FDA warns about serious risks and death when combining opioid pain or cough medicines with benzodiazepines, 2016",
+    "riskScoreWeight": 4
+  },
+  {
+    "id": "pd_002",
+    "class": "CNS_DEPRESSION",
+    "drugClass": "Benzodiazepines",
+    "specificDrugs": ["alprazolam", "diazepam", "lorazepam", "clonazepam", "temazepam", "midazolam"],
+    "mechanism": "GABA-A receptor potentiation causing CNS depression",
+    "severity": "CRITICAL",
+    "consequence": "Additive sedation and respiratory depression with other CNS depressants",
+    "source": "FDA Drug Safety Communication, 2016; Beers Criteria 2023",
+    "riskScoreWeight": 3
+  },
+  {
+    "id": "pd_003",
+    "class": "CNS_DEPRESSION",
+    "drugClass": "Gabapentinoids",
+    "specificDrugs": ["gabapentin", "pregabalin"],
+    "mechanism": "Alpha-2-delta calcium channel subunit binding, enhancing inhibitory neurotransmission",
+    "severity": "HIGH",
+    "consequence": "Additive CNS/respiratory depression; gabapentin + opioid combination associated with 49% increased risk of opioid-related death",
+    "source": "Gomes et al. BMJ 2017; FDA Drug Safety Communication 2019",
+    "riskScoreWeight": 3
+  },
+  {
+    "id": "pd_004",
+    "class": "CNS_DEPRESSION",
+    "drugClass": "Sedating antihistamines",
+    "specificDrugs": ["diphenhydramine", "doxylamine", "hydroxyzine", "promethazine"],
+    "mechanism": "H1 receptor antagonism and anticholinergic effects causing sedation",
+    "severity": "MODERATE",
+    "consequence": "Additive sedation, increased fall risk in elderly, anticholinergic burden",
+    "source": "Beers Criteria 2023; AGS Anticholinergic Burden Scale",
+    "riskScoreWeight": 2
+  },
+  {
+    "id": "pd_005",
+    "class": "QT_PROLONGATION",
+    "drugClass": "Macrolide antibiotics",
+    "specificDrugs": ["azithromycin", "clarithromycin", "erythromycin"],
+    "mechanism": "hERG potassium channel blockade prolonging cardiac repolarization",
+    "severity": "HIGH",
+    "consequence": "QT interval prolongation; additive risk with other QT-prolonging drugs; risk of Torsades de Pointes (TdP)",
+    "source": "CredibleMeds QTDrugs List (known risk); FDA labeling",
+    "riskScoreWeight": 3
+  },
+  {
+    "id": "pd_006",
+    "class": "QT_PROLONGATION",
+    "drugClass": "Antipsychotics",
+    "specificDrugs": ["haloperidol", "quetiapine", "risperidone", "olanzapine", "ziprasidone"],
+    "mechanism": "hERG potassium channel blockade",
+    "severity": "HIGH",
+    "consequence": "QT prolongation and TdP risk, especially with electrolyte abnormalities (hypokalemia, hypomagnesemia)",
+    "source": "CredibleMeds QTDrugs List; FDA labeling",
+    "riskScoreWeight": 3
+  },
+  {
+    "id": "pd_007",
+    "class": "QT_PROLONGATION",
+    "drugClass": "Fluoroquinolone antibiotics",
+    "specificDrugs": ["ciprofloxacin", "levofloxacin", "moxifloxacin"],
+    "mechanism": "hERG potassium channel blockade",
+    "severity": "MODERATE",
+    "consequence": "Additive QT prolongation risk",
+    "source": "CredibleMeds QTDrugs List; FDA labeling",
+    "riskScoreWeight": 2
+  },
+  {
+    "id": "pd_008",
+    "class": "BLEEDING_RISK",
+    "drugClass": "Anticoagulants",
+    "specificDrugs": ["warfarin", "apixaban", "rivaroxaban", "dabigatran", "edoxaban", "enoxaparin"],
+    "mechanism": "Direct anticoagulation — factor Xa inhibition, thrombin inhibition, or vitamin K antagonism",
+    "severity": "HIGH",
+    "consequence": "Major bleeding risk, including GI hemorrhage and intracranial hemorrhage when combined with antiplatelet or NSAID agents",
+    "source": "ACC/AHA Anticoagulation Guidelines 2023",
+    "riskScoreWeight": 4
+  },
+  {
+    "id": "pd_009",
+    "class": "BLEEDING_RISK",
+    "drugClass": "NSAIDs",
+    "specificDrugs": ["ibuprofen", "naproxen", "diclofenac", "meloxicam", "ketorolac", "indomethacin"],
+    "mechanism": "COX-1 inhibition reducing thromboxane A2 and prostaglandin-mediated gastric protection",
+    "severity": "HIGH",
+    "consequence": "GI bleeding, additive bleeding risk with anticoagulants (3-fold increase in major GI bleed)",
+    "source": "Lanas et al. NEJM 2006; Beers Criteria 2023",
+    "riskScoreWeight": 3
+  },
+  {
+    "id": "pd_010",
+    "class": "BLEEDING_RISK",
+    "drugClass": "SSRIs",
+    "specificDrugs": ["fluoxetine", "sertraline", "paroxetine", "escitalopram", "citalopram", "fluvoxamine"],
+    "mechanism": "Serotonin-mediated platelet aggregation inhibition (platelets rely on serotonin for activation)",
+    "severity": "MODERATE",
+    "consequence": "Increased GI and surgical bleeding risk; 3-fold increase in upper GI bleed when combined with NSAIDs",
+    "source": "de Abajo et al. Lancet 1999; Yuan et al. CMAJ 2006",
+    "riskScoreWeight": 2
+  },
+  {
+    "id": "pd_011",
+    "class": "SEROTONIN_SYNDROME",
+    "drugClass": "SSRIs/SNRIs",
+    "specificDrugs": ["fluoxetine", "sertraline", "venlafaxine", "duloxetine", "escitalopram"],
+    "mechanism": "Serotonin reuptake inhibition increasing synaptic serotonin",
+    "severity": "HIGH",
+    "consequence": "Serotonin syndrome when combined with tramadol, MAOIs, triptans, or linezolid — agitation, hyperthermia, myoclonus, death",
+    "source": "Boyer & Shannon NEJM 2005; FDA MedWatch",
+    "riskScoreWeight": 3
+  },
+  {
+    "id": "pd_012",
+    "class": "HYPOTENSION",
+    "drugClass": "Alpha-1 blockers",
+    "specificDrugs": ["tamsulosin", "terazosin", "doxazosin", "prazosin"],
+    "mechanism": "Alpha-1 adrenergic receptor antagonism causing vasodilation",
+    "severity": "MODERATE",
+    "consequence": "Additive hypotension and orthostatic hypotension when combined with antihypertensives or PDE5 inhibitors",
+    "source": "Beers Criteria 2023; FDA labeling",
+    "riskScoreWeight": 2
+  }
+]
