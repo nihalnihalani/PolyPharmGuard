@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { createHash } from 'node:crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
@@ -12,6 +13,11 @@ import { checkLabMonitoring } from './tools/lab-monitoring.js';
 import { resolveFHIRContext } from './sharp/context.js';
 import { FHIRClient } from '../fhir/client.js';
 import { getPatientContext } from '../fhir/queries.js';
+import { logToolCall } from '../audit/db.js';
+
+function hashInputs(input: unknown): string {
+  return createHash('sha256').update(JSON.stringify(input)).digest('hex').slice(0, 16);
+}
 
 const FHIRContextSchema = z.object({
   fhirServerUrl: z.string().describe('FHIR server base URL'),
@@ -34,6 +40,7 @@ server.tool(
     fhirContext: FHIRContextSchema.describe('Explicit FHIR connection context (alternative to SHARP headers or environment variables)'),
   },
   async (input) => {
+    const start = Date.now();
     let patientCtx = null;
 
     const fhirCtx = resolveFHIRContext(input, null);
@@ -52,7 +59,7 @@ server.tool(
       patientContext: patientCtx,
     });
 
-    return {
+    const result = {
       content: [{
         type: 'text' as const,
         text: JSON.stringify({
@@ -63,6 +70,20 @@ server.tool(
         }, null, 2),
       }],
     };
+
+    try {
+      logToolCall({
+        toolName: 'analyze_cascade_interactions',
+        patientId: input.patientId,
+        inputsHash: hashInputs(input),
+        outputsJson: result.content[0].text,
+        latencyMs: Date.now() - start,
+      });
+    } catch (err) {
+      console.error('[Audit] logToolCall failed for analyze_cascade_interactions:', (err as Error).message);
+    }
+
+    return result;
   }
 );
 
@@ -76,6 +97,7 @@ server.tool(
     fhirContext: FHIRContextSchema.describe('Explicit FHIR connection context'),
   },
   async (input) => {
+    const start = Date.now();
     let patientCtx = null;
 
     const fhirCtx = resolveFHIRContext(input, null);
@@ -94,7 +116,7 @@ server.tool(
       patientContext: patientCtx,
     });
 
-    return {
+    const result = {
       content: [{
         type: 'text' as const,
         text: JSON.stringify({
@@ -105,6 +127,20 @@ server.tool(
         }, null, 2),
       }],
     };
+
+    try {
+      logToolCall({
+        toolName: 'check_organ_function_dosing',
+        patientId: input.patientId,
+        inputsHash: hashInputs(input),
+        outputsJson: result.content[0].text,
+        latencyMs: Date.now() - start,
+      });
+    } catch (err) {
+      console.error('[Audit] logToolCall failed for check_organ_function_dosing:', (err as Error).message);
+    }
+
+    return result;
   }
 );
 
@@ -119,6 +155,7 @@ server.tool(
     patientAge: z.number().optional().describe('Patient age in years (alternative to FHIR lookup)'),
   },
   async (input) => {
+    const start = Date.now();
     let patientCtx = null;
 
     const fhirCtx = resolveFHIRContext(input, null);
@@ -138,7 +175,7 @@ server.tool(
       patientAge: input.patientAge,
     });
 
-    return {
+    const result = {
       content: [{
         type: 'text' as const,
         text: JSON.stringify({
@@ -149,6 +186,20 @@ server.tool(
         }, null, 2),
       }],
     };
+
+    try {
+      logToolCall({
+        toolName: 'screen_deprescribing',
+        patientId: input.patientId,
+        inputsHash: hashInputs(input),
+        outputsJson: result.content[0].text,
+        latencyMs: Date.now() - start,
+      });
+    } catch (err) {
+      console.error('[Audit] logToolCall failed for screen_deprescribing:', (err as Error).message);
+    }
+
+    return result;
   }
 );
 
@@ -162,6 +213,7 @@ server.tool(
     fhirContext: FHIRContextSchema.describe('Explicit FHIR connection context'),
   },
   async (input) => {
+    const start = Date.now();
     let patientCtx = null;
     const fhirCtx = resolveFHIRContext(input, null);
     if (fhirCtx) {
@@ -174,9 +226,23 @@ server.tool(
       }
     }
     const findings = await analyzePDInteractions({ medications: input.medications, patientContext: patientCtx });
-    return {
+    const result = {
       content: [{ type: 'text' as const, text: JSON.stringify({ findings, timestamp: new Date().toISOString() }, null, 2) }],
     };
+
+    try {
+      logToolCall({
+        toolName: 'analyze_pharmacodynamic_interactions',
+        patientId: input.patientId,
+        inputsHash: hashInputs(input),
+        outputsJson: result.content[0].text,
+        latencyMs: Date.now() - start,
+      });
+    } catch (err) {
+      console.error('[Audit] logToolCall failed for analyze_pharmacodynamic_interactions:', (err as Error).message);
+    }
+
+    return result;
   }
 );
 
@@ -189,10 +255,24 @@ server.tool(
     genotypes: z.record(z.string(), z.string()).describe('Patient genotype map, e.g. {"CYP2D6": "poor_metabolizer", "CYP2C19": "intermediate_metabolizer"}'),
   },
   async (input) => {
+    const start = Date.now();
     const findings = await checkPharmacogenomics({ medications: input.medications, genotypes: input.genotypes });
-    return {
+    const result = {
       content: [{ type: 'text' as const, text: JSON.stringify({ findings, timestamp: new Date().toISOString() }, null, 2) }],
     };
+
+    try {
+      logToolCall({
+        toolName: 'check_pharmacogenomics',
+        inputsHash: hashInputs(input),
+        outputsJson: result.content[0].text,
+        latencyMs: Date.now() - start,
+      });
+    } catch (err) {
+      console.error('[Audit] logToolCall failed for check_pharmacogenomics:', (err as Error).message);
+    }
+
+    return result;
   }
 );
 
@@ -212,13 +292,28 @@ server.tool(
     fhirContext: FHIRContextSchema.describe('Explicit FHIR connection context'),
   },
   async (input) => {
+    const start = Date.now();
     const findings = await checkLabMonitoring({
       medications: input.medications,
       recentLabs: input.recentLabs,
     });
-    return {
+    const result = {
       content: [{ type: 'text' as const, text: JSON.stringify({ findings, timestamp: new Date().toISOString() }, null, 2) }],
     };
+
+    try {
+      logToolCall({
+        toolName: 'check_lab_monitoring',
+        patientId: input.patientId,
+        inputsHash: hashInputs(input),
+        outputsJson: result.content[0].text,
+        latencyMs: Date.now() - start,
+      });
+    } catch (err) {
+      console.error('[Audit] logToolCall failed for check_lab_monitoring:', (err as Error).message);
+    }
+
+    return result;
   }
 );
 
