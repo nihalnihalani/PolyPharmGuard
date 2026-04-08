@@ -1,7 +1,7 @@
 export interface FHIRCoding {
   system: string;
   code: string;
-  display: string;
+  display?: string;
 }
 
 export interface FHIRCodeableConcept {

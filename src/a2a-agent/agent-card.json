@@ -1,0 +1,53 @@
+{
+  "name": "MedReview Agent",
+  "description": "Comprehensive medication review orchestrator that analyzes polypharmacy risks through cascade interaction analysis, organ-function dose checking, and deprescribing screening. Powered by FDA CYP450 knowledge base, AGS Beers Criteria 2023, and STOPPFrail criteria. Returns 5Ts output: Talk (narrative), Template (taper plans), Table (risk matrix), Transaction (FHIR updates), Task (pharmacy review items).",
+  "url": "http://localhost:8000",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "skills": [
+    {
+      "id": "medication_review",
+      "name": "Full Medication Review",
+      "description": "Complete polypharmacy analysis: cascade interactions + renal/hepatic dosing + deprescribing screening with 5Ts unified output",
+      "tags": ["polypharmacy", "medication-safety", "clinical-decision-support", "deprescribing"],
+      "examples": [
+        "Run a full medication review for patient with CKD Stage 4",
+        "Analyze all drug interactions for 78-year-old on 12 medications",
+        "Screen medications for deprescribing candidates in elderly patient"
+      ]
+    },
+    {
+      "id": "cascade_analysis",
+      "name": "Cascade Interaction Analysis",
+      "description": "Detect multi-drug CYP450 pharmacokinetic cascade interactions that pairwise checkers miss",
+      "tags": ["cyp450", "drug-interactions", "pharmacokinetics", "cascade"]
+    },
+    {
+      "id": "dosing_check",
+      "name": "Organ-Function Dose Check",
+      "description": "Cross-reference medication dosing against renal (eGFR) and hepatic function with FDA labeling thresholds",
+      "tags": ["renal-dosing", "hepatic-dosing", "egfr", "ckd", "dose-adjustment"]
+    },
+    {
+      "id": "deprescribing_screen",
+      "name": "Deprescribing Screen",
+      "description": "Identify medication discontinuation candidates using AGS 2023 Beers Criteria and STOPPFrail with evidence-based taper plans",
+      "tags": ["deprescribing", "beers-criteria", "stoppfrail", "polypharmacy", "elderly"]
+    }
+  ],
+  "provider": {
+    "organization": "PolyPharmGuard",
+    "url": "https://github.com/nihalnihalani/PolyPharmGuard",
+    "contact": "PolyPharmGuard Hackathon Team"
+  },
+  "authentication": {
+    "schemes": ["apiKey"],
+    "credentials": null
+  },
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"]
+}
