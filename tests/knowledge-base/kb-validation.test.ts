@@ -76,7 +76,9 @@ describe('Knowledge Base Validation', () => {
       expect(fluconazole).toBeDefined();
       const cyp3a4 = fluconazole.inhibitions.find((i: any) => i.enzyme === 'CYP3A4');
       expect(cyp3a4).toBeDefined();
-      expect(cyp3a4.strength).toContain('strong');
+      // Fluconazole is a MODERATE CYP3A4 inhibitor at standard doses (≤200mg/day).
+      // Strong CYP3A4 inhibition applies only at ≥400mg/day per FDA classification.
+      expect(cyp3a4.strength).toContain('moderate');
     });
 
     it('fluconazole is listed as a CYP2C19 strong inhibitor', () => {

@@ -1,7 +1,15 @@
-const BEARER_TOKEN_PATTERN = /Bearer\s+[A-Za-z0-9._~+/\-]+=*/g;
-const URL_WITH_CREDENTIALS_PATTERN = /https?:\/\/[^:@\s]+:[^@\s]+@[^\s]*/g;
-const JWT_PATTERN = /ey[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g;
-const LONG_TOKEN_PATTERN = /ey[A-Za-z0-9_-]{50,}/g;
+// No /g flag on these — global regex patterns with /g are stateful (lastIndex mutates
+// between .test() calls), which causes every other call to return false even when
+// credentials are present, creating a credential-leak vulnerability.
+const BEARER_TOKEN_PATTERN = /Bearer\s+[A-Za-z0-9._~+/\-]+=*/;
+const URL_WITH_CREDENTIALS_PATTERN = /https?:\/\/[^:@\s]+:[^@\s]+@[^\s]*/;
+const JWT_PATTERN = /ey[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/;
+const LONG_TOKEN_PATTERN = /ey[A-Za-z0-9_-]{50,}/;
+// Replace patterns keep /g so all occurrences are substituted in a single pass
+const BEARER_TOKEN_REPLACE = /Bearer\s+[A-Za-z0-9._~+/\-]+=*/g;
+const URL_WITH_CREDENTIALS_REPLACE = /https?:\/\/[^:@\s]+:[^@\s]+@[^\s]*/g;
+const JWT_REPLACE = /ey[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g;
+const LONG_TOKEN_REPLACE = /ey[A-Za-z0-9_-]{50,}/g;
 
 const UNSUPPORTED_CLAIM_PATTERNS = [
   /studies show(?!\s+\[source:)/gi,
@@ -35,22 +43,22 @@ export function ensureNoFHIRCredentials(prompt: string): string {
   let stripped = false;
 
   if (BEARER_TOKEN_PATTERN.test(sanitized)) {
-    sanitized = sanitized.replace(BEARER_TOKEN_PATTERN, 'Bearer [REDACTED]');
+    sanitized = sanitized.replace(BEARER_TOKEN_REPLACE, 'Bearer [REDACTED]');
     stripped = true;
   }
 
   if (URL_WITH_CREDENTIALS_PATTERN.test(sanitized)) {
-    sanitized = sanitized.replace(URL_WITH_CREDENTIALS_PATTERN, '[REDACTED_URL]');
+    sanitized = sanitized.replace(URL_WITH_CREDENTIALS_REPLACE, '[REDACTED_URL]');
     stripped = true;
   }
 
   if (JWT_PATTERN.test(sanitized)) {
-    sanitized = sanitized.replace(JWT_PATTERN, '[JWT_REDACTED]');
+    sanitized = sanitized.replace(JWT_REPLACE, '[JWT_REDACTED]');
     stripped = true;
   }
 
   if (LONG_TOKEN_PATTERN.test(sanitized)) {
-    sanitized = sanitized.replace(LONG_TOKEN_PATTERN, '[TOKEN_REDACTED]');
+    sanitized = sanitized.replace(LONG_TOKEN_REPLACE, '[TOKEN_REDACTED]');
     stripped = true;
   }
 

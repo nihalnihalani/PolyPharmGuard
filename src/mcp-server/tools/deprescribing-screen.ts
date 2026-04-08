@@ -227,7 +227,7 @@ function getAlgorithmicDeprescribingFindings(
   return findings;
 }
 
-const SEVERITY_ORDER: Record<string, number> = { HIGH: 0, MODERATE: 1, LOW: 2, INFO: 3 };
+const SEVERITY_ORDER: Record<string, number> = { CRITICAL: 0, HIGH: 1, MODERATE: 2, LOW: 3, INFO: 4 };
 
 export async function screenDeprescribing(input: {
   medications: Array<string | { name?: string; display?: string }> | any[];

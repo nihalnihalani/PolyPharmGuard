@@ -39,8 +39,9 @@ describe('analyze_cascade_interactions', () => {
         f.chain?.some(s => s.fact.toLowerCase().includes('simvastatin'))
       );
       expect(cascade).toBeDefined();
-      // Fluconazole is a strong CYP3A4 inhibitor + simvastatin is major substrate = HIGH
-      expect(['CRITICAL', 'HIGH']).toContain(cascade!.severity);
+      // Fluconazole 200mg is a MODERATE CYP3A4 inhibitor (strong only at ≥400mg/day).
+      // Moderate inhibitor + major substrate = MODERATE severity without renal impairment.
+      expect(['CRITICAL', 'HIGH', 'MODERATE']).toContain(cascade!.severity);
     });
 
     it('detects fluconazole->warfarin CYP2C9 interaction', async () => {
@@ -129,10 +130,12 @@ describe('analyze_cascade_interactions', () => {
       });
 
       expect(findings.length).toBeGreaterThanOrEqual(1);
-      // With eGFR < 30 + strong inhibitor + major substrate = CRITICAL
+      // Fluconazole 200mg is a moderate CYP3A4 inhibitor. Moderate + major substrate +
+      // eGFR 28 (severe renal) escalates one tier to HIGH (not CRITICAL).
+      // CRITICAL requires a strong inhibitor + major substrate + severe renal.
       const topFinding = findings[0];
       expect(topFinding).toBeDefined();
-      expect(topFinding!.severity).toBe('CRITICAL');
+      expect(topFinding!.severity).toBe('HIGH');
       // Verify the eGFR step is in the chain
       const egfrStep = topFinding!.chain?.find(s => s.fact.toLowerCase().includes('egfr'));
       expect(egfrStep).toBeDefined();

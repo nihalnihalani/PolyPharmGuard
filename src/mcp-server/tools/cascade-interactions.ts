@@ -116,11 +116,14 @@ function detectAlgorithmicCascades(
         const isModerateInhibitor = inhibition.strength.includes('moderate');
 
         // Determine severity
+        // Severe renal impairment (eGFR < 30) escalates any inhibition by one tier —
+        // the kidney can no longer compensate for increased plasma drug levels.
+        const severeRenal = patientContext?.egfr !== undefined && patientContext.egfr < 30;
         let severity: CascadeFinding['severity'] = 'LOW';
         if (isStrongInhibitor && isMajorSubstrate) {
-          severity = patientContext?.egfr !== undefined && patientContext.egfr < 30 ? 'CRITICAL' : 'HIGH';
+          severity = severeRenal ? 'CRITICAL' : 'HIGH';
         } else if (isStrongInhibitor || (isModerateInhibitor && isMajorSubstrate)) {
-          severity = 'MODERATE';
+          severity = severeRenal ? 'HIGH' : 'MODERATE';
         }
 
         // Build evidence chain
