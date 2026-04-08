@@ -1,0 +1,82 @@
+[
+  {
+    "gene": "CYP2D6",
+    "phenotype": "poor_metabolizer",
+    "drug": "codeine",
+    "rxnormCui": "2670",
+    "consequence": "Minimal conversion to morphine — inadequate analgesia. However, some poor metabolizers paradoxically accumulate morphine via alternate pathways.",
+    "recommendation": "Avoid codeine. Use non-CYP2D6-dependent opioids (e.g., morphine, oxymorphone, buprenorphine).",
+    "severity": "CRITICAL",
+    "source": "CPIC Guideline for Codeine and CYP2D6, Clinical Pharmacology & Therapeutics 2022"
+  },
+  {
+    "gene": "CYP2D6",
+    "phenotype": "ultrarapid_metabolizer",
+    "drug": "codeine",
+    "rxnormCui": "2670",
+    "consequence": "Ultra-rapid conversion to morphine causes toxic morphine levels — respiratory depression, sedation, death. FDA black box warning.",
+    "recommendation": "Contraindicated. Switch to non-CYP2D6-dependent opioid immediately.",
+    "severity": "CRITICAL",
+    "source": "FDA Drug Safety Communication 2013; CPIC CYP2D6 Codeine Guideline 2022"
+  },
+  {
+    "gene": "CYP2C19",
+    "phenotype": "poor_metabolizer",
+    "drug": "clopidogrel",
+    "rxnormCui": "32968",
+    "consequence": "Clopidogrel is a prodrug requiring CYP2C19 activation. Poor metabolizers (~2-14% of population) have 3-fold lower active metabolite levels — therapeutic failure, increased MACE risk.",
+    "recommendation": "Switch to prasugrel or ticagrelor (not CYP2C19-dependent). If stent placed, failure to switch is associated with stent thrombosis.",
+    "severity": "CRITICAL",
+    "source": "FDA Black Box Warning on clopidogrel 2010; CPIC CYP2C19 Clopidogrel Guideline 2022"
+  },
+  {
+    "gene": "CYP2C19",
+    "phenotype": "ultrarapid_metabolizer",
+    "drug": "omeprazole",
+    "rxnormCui": "7646",
+    "consequence": "Rapid metabolism of omeprazole reduces plasma levels — inadequate acid suppression. Standard doses may be insufficient for H. pylori eradication or GERD.",
+    "recommendation": "Consider doubling PPI dose or switching to rabeprazole (less CYP2C19-dependent).",
+    "severity": "MODERATE",
+    "source": "CPIC PPI CYP2C19 Guideline 2021"
+  },
+  {
+    "gene": "CYP2D6",
+    "phenotype": "poor_metabolizer",
+    "drug": "metoprolol",
+    "rxnormCui": "41493",
+    "consequence": "Metoprolol plasma levels 5-fold higher in CYP2D6 poor metabolizers — bradycardia, heart block, hypotension at standard doses.",
+    "recommendation": "Reduce metoprolol dose by 50% and titrate based on heart rate response. Monitor closely.",
+    "severity": "HIGH",
+    "source": "DPWG CYP2D6 Metoprolol Guideline 2023"
+  },
+  {
+    "gene": "CYP2C9",
+    "phenotype": "poor_metabolizer",
+    "drug": "warfarin",
+    "rxnormCui": "11289",
+    "consequence": "CYP2C9 poor metabolizers require significantly lower warfarin doses (up to 50% reduction) — standard doses cause supratherapeutic INR and major bleeding.",
+    "recommendation": "Initiate warfarin at reduced dose (e.g., 2mg instead of 5mg). Target INR 2.0-3.0. Use pharmacogenomics-based dosing calculator (IWPC algorithm).",
+    "severity": "HIGH",
+    "source": "CPIC CYP2C9/VKORC1 Warfarin Guideline 2017"
+  },
+  {
+    "gene": "CYP2D6",
+    "phenotype": "poor_metabolizer",
+    "drug": "tramadol",
+    "rxnormCui": "41493",
+    "consequence": "Tramadol requires CYP2D6 for conversion to active M1 metabolite. Poor metabolizers have reduced analgesia. Risk of serotonin syndrome from accumulation of parent compound.",
+    "recommendation": "Use alternative analgesic not dependent on CYP2D6 activation.",
+    "severity": "MODERATE",
+    "source": "CPIC CYP2D6 Tramadol Guideline 2022"
+  },
+  {
+    "gene": "CYP2C19",
+    "phenotype": "poor_metabolizer",
+    "drug": "sertraline",
+    "rxnormCui": "36437",
+    "consequence": "CYP2C19 poor metabolizers have elevated sertraline exposure — increased risk of QT prolongation and adverse effects at standard doses.",
+    "recommendation": "Initiate at 25mg. Titrate slowly. Consider escitalopram which has less CYP2C19 dependence.",
+    "severity": "MODERATE",
+    "source": "CPIC CYP2C19 Antidepressants Guideline 2023"
+  }
+]
