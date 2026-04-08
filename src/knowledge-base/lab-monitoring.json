@@ -1,0 +1,136 @@
+[
+  {
+    "drug": "warfarin",
+    "rxnormCui": "11289",
+    "requiredLabs": [
+      {
+        "labName": "INR (International Normalized Ratio)",
+        "loincCode": "6301-6",
+        "monitoringFrequencyDays": 30,
+        "therapeuticRange": { "min": 2.0, "max": 3.0, "unit": "ratio" },
+        "actionThreshold": { "criticalLow": 1.5, "criticalHigh": 4.0 },
+        "action": "Dose adjustment required. INR > 4.0: hold warfarin + consider vitamin K. INR < 1.5: increase dose.",
+        "source": "ACC/AHA Anticoagulation Guidelines 2023"
+      }
+    ]
+  },
+  {
+    "drug": "digoxin",
+    "rxnormCui": "3407",
+    "requiredLabs": [
+      {
+        "labName": "Digoxin level",
+        "loincCode": "10535-3",
+        "monitoringFrequencyDays": 90,
+        "therapeuticRange": { "min": 0.5, "max": 0.9, "unit": "ng/mL" },
+        "actionThreshold": { "criticalHigh": 2.0 },
+        "action": "Digoxin toxicity: nausea, visual changes, arrhythmia. Hold digoxin if level > 2.0 ng/mL. In elderly, target 0.5-0.9 ng/mL only.",
+        "source": "Beers Criteria 2023; ACC/AHA Heart Failure Guidelines 2022"
+      },
+      {
+        "labName": "Serum potassium",
+        "loincCode": "2823-3",
+        "monitoringFrequencyDays": 90,
+        "therapeuticRange": { "min": 3.5, "max": 5.0, "unit": "mEq/L" },
+        "actionThreshold": { "criticalLow": 3.0 },
+        "action": "Hypokalemia potentiates digoxin toxicity. Correct potassium before adjusting digoxin dose.",
+        "source": "FDA Digoxin label; AHA HF Guidelines 2022"
+      }
+    ]
+  },
+  {
+    "drug": "lithium",
+    "rxnormCui": "6448",
+    "requiredLabs": [
+      {
+        "labName": "Lithium level (trough)",
+        "loincCode": "14334-7",
+        "monitoringFrequencyDays": 90,
+        "therapeuticRange": { "min": 0.6, "max": 1.2, "unit": "mEq/L" },
+        "actionThreshold": { "criticalHigh": 1.5 },
+        "action": "Lithium toxicity: tremor, confusion, ataxia, renal failure. Level > 1.5 mEq/L: reduce dose. Level > 2.0 mEq/L: emergency hemodialysis.",
+        "source": "FDA Lithium label; APA Practice Guideline for Bipolar Disorder 2023"
+      },
+      {
+        "labName": "TSH (Thyroid-stimulating hormone)",
+        "loincCode": "3016-3",
+        "monitoringFrequencyDays": 180,
+        "therapeuticRange": { "min": 0.4, "max": 4.0, "unit": "mIU/L" },
+        "action": "Lithium causes hypothyroidism in 20-42% of patients. Biannual TSH monitoring required.",
+        "source": "APA Practice Guideline 2023"
+      },
+      {
+        "labName": "Serum creatinine / eGFR",
+        "loincCode": "33914-3",
+        "monitoringFrequencyDays": 180,
+        "actionThreshold": { "criticalLow": 30 },
+        "action": "Reduce lithium dose significantly when eGFR < 60. Avoid if eGFR < 30. Lithium is nephrotoxic with chronic use.",
+        "source": "FDA Lithium label; KDIGO CKD Guidelines"
+      }
+    ]
+  },
+  {
+    "drug": "methotrexate",
+    "rxnormCui": "7413",
+    "requiredLabs": [
+      {
+        "labName": "ALT (Alanine aminotransferase)",
+        "loincCode": "1742-6",
+        "monitoringFrequencyDays": 90,
+        "actionThreshold": { "criticalHigh": 120 },
+        "action": "Methotrexate hepatotoxicity: hold if ALT > 3x ULN (typically > 120 IU/L). Consider liver biopsy after cumulative dose > 1.5g.",
+        "source": "ACR Methotrexate Monitoring Guidelines 2022"
+      },
+      {
+        "labName": "CBC with differential",
+        "loincCode": "58410-2",
+        "monitoringFrequencyDays": 90,
+        "action": "Methotrexate causes bone marrow suppression. Monitor for leukopenia (WBC < 3.0), thrombocytopenia (PLT < 100k).",
+        "source": "ACR Methotrexate Monitoring Guidelines 2022"
+      }
+    ]
+  },
+  {
+    "drug": "amiodarone",
+    "rxnormCui": "703",
+    "requiredLabs": [
+      {
+        "labName": "TSH",
+        "loincCode": "3016-3",
+        "monitoringFrequencyDays": 180,
+        "action": "Amiodarone causes thyroid dysfunction (hypo or hyperthyroidism) in 15-20% of patients. Biannual TSH required.",
+        "source": "ACC/AHA Antiarrhythmic Guidelines 2023"
+      },
+      {
+        "labName": "ALT",
+        "loincCode": "1742-6",
+        "monitoringFrequencyDays": 180,
+        "actionThreshold": { "criticalHigh": 120 },
+        "action": "Amiodarone hepatotoxicity: hold if ALT > 3x ULN. Can cause severe hepatic failure.",
+        "source": "FDA Amiodarone label"
+      },
+      {
+        "labName": "Serum creatinine / eGFR",
+        "loincCode": "33914-3",
+        "monitoringFrequencyDays": 180,
+        "action": "Monitor renal function as iodine load from amiodarone can affect kidneys.",
+        "source": "FDA Amiodarone label"
+      }
+    ]
+  },
+  {
+    "drug": "phenytoin",
+    "rxnormCui": "8123",
+    "requiredLabs": [
+      {
+        "labName": "Phenytoin level (free)",
+        "loincCode": "14647-2",
+        "monitoringFrequencyDays": 90,
+        "therapeuticRange": { "min": 1.0, "max": 2.0, "unit": "mcg/mL (free)" },
+        "actionThreshold": { "criticalHigh": 2.5 },
+        "action": "Phenytoin toxicity: nystagmus, ataxia, confusion. Narrow therapeutic index. In elderly/hypoalbuminemia, always check FREE phenytoin.",
+        "source": "FDA Phenytoin label; Beers Criteria 2023"
+      }
+    ]
+  }
+]
