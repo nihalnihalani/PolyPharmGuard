@@ -130,6 +130,7 @@ export async function checkLabMonitoring(input: {
     console.error('[lab-monitoring] LLM parse failed, using algorithmic findings');
   }
 
+  // TODO H1: merge rather than replace once all tools are stable
   const finalFindings = llmFindings.length > 0 ? llmFindings : findings;
   return finalFindings.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99));
 }
