@@ -6,6 +6,9 @@ import { initGemini } from '../llm/gemini.js';
 import { analyzeCascadeInteractions } from './tools/cascade-interactions.js';
 import { checkOrganFunctionDosing } from './tools/organ-function-dosing.js';
 import { screenDeprescribing } from './tools/deprescribing-screen.js';
+import { analyzePDInteractions } from './tools/pd-interactions.js';
+import { checkPharmacogenomics } from './tools/pharmacogenomics.js';
+import { checkLabMonitoring } from './tools/lab-monitoring.js';
 import { resolveFHIRContext } from './sharp/context.js';
 import { FHIRClient } from '../fhir/client.js';
 import { getPatientContext } from '../fhir/queries.js';
@@ -149,6 +152,76 @@ server.tool(
   }
 );
 
+// Tool 4: analyze_pharmacodynamic_interactions
+server.tool(
+  'analyze_pharmacodynamic_interactions',
+  'Detect pharmacodynamic (receptor-level) drug interactions including CNS depression accumulation, QT prolongation stacking, and bleeding risk accumulation. Catches the additive effects that CYP450 analysis misses.',
+  {
+    medications: z.array(z.string()).describe('List of medication names to analyze'),
+    patientId: z.string().optional().describe('FHIR Patient ID for clinical context'),
+    fhirContext: FHIRContextSchema.describe('Explicit FHIR connection context'),
+  },
+  async (input) => {
+    let patientCtx = null;
+    const fhirCtx = resolveFHIRContext(input, null);
+    if (fhirCtx) {
+      try {
+        const client = new FHIRClient();
+        client.connect(fhirCtx.fhirServerUrl, fhirCtx.accessToken);
+        patientCtx = await getPatientContext(client, fhirCtx.patientId);
+      } catch (err) {
+        console.error('[MCP] FHIR context fetch failed:', (err as Error).message);
+      }
+    }
+    const findings = await analyzePDInteractions({ medications: input.medications, patientContext: patientCtx });
+    return {
+      content: [{ type: 'text' as const, text: JSON.stringify({ findings, timestamp: new Date().toISOString() }, null, 2) }],
+    };
+  }
+);
+
+// Tool 5: check_pharmacogenomics
+server.tool(
+  'check_pharmacogenomics',
+  'Identify gene-drug interactions based on patient pharmacogenomic profile. Covers CYP2D6, CYP2C19, and CYP2C9 phenotypes affecting codeine, clopidogrel, warfarin, metoprolol, and other critical medications.',
+  {
+    medications: z.array(z.string()).describe('List of medication names'),
+    genotypes: z.record(z.string(), z.string()).describe('Patient genotype map, e.g. {"CYP2D6": "poor_metabolizer", "CYP2C19": "intermediate_metabolizer"}'),
+  },
+  async (input) => {
+    const findings = await checkPharmacogenomics({ medications: input.medications, genotypes: input.genotypes });
+    return {
+      content: [{ type: 'text' as const, text: JSON.stringify({ findings, timestamp: new Date().toISOString() }, null, 2) }],
+    };
+  }
+);
+
+// Tool 6: check_lab_monitoring
+server.tool(
+  'check_lab_monitoring',
+  'Flag medications requiring laboratory safety monitoring (INR for warfarin, digoxin levels, lithium levels, etc.) and identify missing, overdue, or out-of-range results based on FHIR observation data.',
+  {
+    medications: z.array(z.string()).describe('List of medication names'),
+    recentLabs: z.array(z.object({
+      loincCode: z.string().describe('LOINC code of the lab test'),
+      value: z.number().describe('Numeric result value'),
+      date: z.string().describe('Result date (YYYY-MM-DD)'),
+      labName: z.string().describe('Human-readable lab name'),
+    })).describe('Recent laboratory results from FHIR Observations'),
+    patientId: z.string().optional().describe('FHIR Patient ID'),
+    fhirContext: FHIRContextSchema.describe('Explicit FHIR connection context'),
+  },
+  async (input) => {
+    const findings = await checkLabMonitoring({
+      medications: input.medications,
+      recentLabs: input.recentLabs,
+    });
+    return {
+      content: [{ type: 'text' as const, text: JSON.stringify({ findings, timestamp: new Date().toISOString() }, null, 2) }],
+    };
+  }
+);
+
 async function main() {
   const geminiKey = process.env['GEMINI_API_KEY'];
   if (geminiKey) {
@@ -160,7 +233,7 @@ async function main() {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('[PolyPharmGuard] MCP Server running on stdio. Tools: analyze_cascade_interactions, check_organ_function_dosing, screen_deprescribing');
+  console.error('[PolyPharmGuard] MCP Server running on stdio. Tools: analyze_cascade_interactions, check_organ_function_dosing, screen_deprescribing, analyze_pharmacodynamic_interactions, check_pharmacogenomics, check_lab_monitoring');
 }
 
 main().catch((err) => {
