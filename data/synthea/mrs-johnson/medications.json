@@ -1,0 +1,247 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "id": "mrs-johnson-medications",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-001",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "4083", "display": "Fluconazole" }],
+          "text": "Fluconazole 200mg"
+        },
+        "dosageInstruction": [{
+          "text": "200mg once daily",
+          "timing": { "repeat": { "frequency": 1, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 200, "unit": "mg" } }]
+        }],
+        "authoredOn": "2025-01-15"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-002",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "36567", "display": "Simvastatin" }],
+          "text": "Simvastatin 40mg"
+        },
+        "dosageInstruction": [{
+          "text": "40mg once daily at bedtime",
+          "timing": { "repeat": { "frequency": 1, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 40, "unit": "mg" } }]
+        }],
+        "authoredOn": "2025-01-15"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-003",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "17767", "display": "Amlodipine" }],
+          "text": "Amlodipine 10mg"
+        },
+        "dosageInstruction": [{
+          "text": "10mg once daily",
+          "timing": { "repeat": { "frequency": 1, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 10, "unit": "mg" } }]
+        }],
+        "authoredOn": "2025-01-15"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-004",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "6809", "display": "Metformin" }],
+          "text": "Metformin 1000mg"
+        },
+        "dosageInstruction": [{
+          "text": "1000mg twice daily with meals",
+          "timing": { "repeat": { "frequency": 2, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 1000, "unit": "mg" } }]
+        }],
+        "authoredOn": "2025-01-15"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-005",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "11289", "display": "Warfarin" }],
+          "text": "Warfarin 5mg"
+        },
+        "dosageInstruction": [{
+          "text": "5mg once daily",
+          "timing": { "repeat": { "frequency": 1, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 5, "unit": "mg" } }]
+        }],
+        "authoredOn": "2025-01-15"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-006",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "7646", "display": "Omeprazole" }],
+          "text": "Omeprazole 40mg"
+        },
+        "dosageInstruction": [{
+          "text": "40mg once daily before breakfast",
+          "timing": { "repeat": { "frequency": 1, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 40, "unit": "mg" } }]
+        }],
+        "authoredOn": "2024-10-01"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-007",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "25480", "display": "Gabapentin" }],
+          "text": "Gabapentin 300mg"
+        },
+        "dosageInstruction": [{
+          "text": "300mg three times daily",
+          "timing": { "repeat": { "frequency": 3, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 300, "unit": "mg" } }]
+        }],
+        "authoredOn": "2025-01-15"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-008",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "29046", "display": "Lisinopril" }],
+          "text": "Lisinopril 20mg"
+        },
+        "dosageInstruction": [{
+          "text": "20mg once daily",
+          "timing": { "repeat": { "frequency": 1, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 20, "unit": "mg" } }]
+        }],
+        "authoredOn": "2025-01-15"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-009",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "6918", "display": "Metoprolol" }],
+          "text": "Metoprolol 50mg"
+        },
+        "dosageInstruction": [{
+          "text": "50mg twice daily",
+          "timing": { "repeat": { "frequency": 2, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 50, "unit": "mg" } }]
+        }],
+        "authoredOn": "2025-01-15"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-010",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "1191", "display": "Aspirin" }],
+          "text": "Aspirin 81mg"
+        },
+        "dosageInstruction": [{
+          "text": "81mg once daily",
+          "timing": { "repeat": { "frequency": 1, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 81, "unit": "mg" } }]
+        }],
+        "authoredOn": "2025-01-15"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-011",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "4603", "display": "Furosemide" }],
+          "text": "Furosemide 40mg"
+        },
+        "dosageInstruction": [{
+          "text": "40mg once daily in the morning",
+          "timing": { "repeat": { "frequency": 1, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 40, "unit": "mg" } }]
+        }],
+        "authoredOn": "2025-01-15"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-012",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "8591", "display": "Potassium Chloride" }],
+          "text": "Potassium Chloride 20mEq"
+        },
+        "dosageInstruction": [{
+          "text": "20mEq once daily",
+          "timing": { "repeat": { "frequency": 1, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 20, "unit": "mEq" } }]
+        }],
+        "authoredOn": "2025-01-15"
+      }
+    }
+  ]
+}

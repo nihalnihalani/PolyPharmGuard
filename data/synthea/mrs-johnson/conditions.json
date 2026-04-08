@@ -1,0 +1,92 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "id": "mrs-johnson-conditions",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-ckd4",
+        "clinicalStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active", "display": "Active" }] },
+        "verificationStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed", "display": "Confirmed" }] },
+        "code": {
+          "coding": [
+            { "system": "http://snomed.info/sct", "code": "431857002", "display": "Chronic kidney disease stage 4 (disorder)" },
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "N18.4", "display": "Chronic kidney disease, stage 4 (severe)" }
+          ],
+          "text": "Chronic Kidney Disease Stage 4"
+        },
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "onsetDateTime": "2020-06-01"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-dm2",
+        "clinicalStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active" }] },
+        "verificationStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed" }] },
+        "code": {
+          "coding": [
+            { "system": "http://snomed.info/sct", "code": "44054006", "display": "Diabetes mellitus type 2 (disorder)" },
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "E11.9", "display": "Type 2 diabetes mellitus without complications" }
+          ],
+          "text": "Type 2 Diabetes Mellitus"
+        },
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "onsetDateTime": "2010-03-15"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-htn",
+        "clinicalStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active" }] },
+        "verificationStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed" }] },
+        "code": {
+          "coding": [
+            { "system": "http://snomed.info/sct", "code": "59621000", "display": "Essential hypertension (disorder)" },
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "I10", "display": "Essential (primary) hypertension" }
+          ],
+          "text": "Essential Hypertension"
+        },
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "onsetDateTime": "2005-08-20"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-afib",
+        "clinicalStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active" }] },
+        "verificationStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed" }] },
+        "code": {
+          "coding": [
+            { "system": "http://snomed.info/sct", "code": "49436004", "display": "Atrial fibrillation (disorder)" },
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "I48.91", "display": "Unspecified atrial fibrillation" }
+          ],
+          "text": "Atrial Fibrillation"
+        },
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "onsetDateTime": "2018-11-30"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-neuropathy",
+        "clinicalStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active" }] },
+        "verificationStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed" }] },
+        "code": {
+          "coding": [
+            { "system": "http://snomed.info/sct", "code": "230572002", "display": "Neuropathy due to diabetes mellitus (disorder)" },
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "E11.40", "display": "Type 2 diabetes mellitus with diabetic neuropathy, unspecified" }
+          ],
+          "text": "Diabetic Neuropathy"
+        },
+        "subject": { "reference": "Patient/mrs-johnson-001" },
+        "onsetDateTime": "2022-04-10"
+      }
+    }
+  ]
+}
