@@ -45,12 +45,23 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
     ? `${nameEntry.prefix?.[0] ?? ''} ${nameEntry.given?.[0] ?? ''} ${nameEntry.family ?? ''}`.trim()
     : patientId;
 
+  // Build patientContext so tools can apply organ-function severity escalation
+  const egfr = recentLabs.find(o => o.loincCode === '33914-3')?.value;
+  const patientContext = {
+    patient: patientData.patient,
+    medications: patientData.medications,
+    observations: patientData.observations,
+    conditions: patientData.conditions,
+    age: patientAge,
+    egfr,
+  };
+
   // Run all tools in parallel
   const [cascade, dosing, deprescribing, pd, labMonitoring] = await Promise.all([
-    analyzeCascadeInteractions({ medications }).catch(() => []),
-    checkOrganFunctionDosing({ medications }).catch(() => []),
-    screenDeprescribing({ medications, patientAge }).catch(() => []),
-    analyzePDInteractions({ medications }).catch(() => []),
+    analyzeCascadeInteractions({ medications, patientContext }).catch(() => []),
+    checkOrganFunctionDosing({ medications, patientContext }).catch(() => []),
+    screenDeprescribing({ medications, patientAge, patientContext }).catch(() => []),
+    analyzePDInteractions({ medications, patientContext }).catch(() => []),
     checkLabMonitoring({ medications, recentLabs }).catch(() => []),
   ]);
 

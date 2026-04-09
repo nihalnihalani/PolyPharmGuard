@@ -25,19 +25,16 @@ export default async function ReviewPage({ params }: { params: Promise<{ patient
     ...(findings.labMonitoring ?? []).map((f: Record<string, unknown>) => ({ ...f, toolName: 'lab-monitoring' })),
   ];
 
-  // Build interaction graph edges from cascade + PD findings
-  const interactions = [
-    ...(findings.cascade ?? []).filter((f: { chain?: unknown[] }) => (f.chain?.length ?? 0) > 0).map((f: { finding: string; severity: string }) => {
-      const parts = f.finding.match(/: (.+?) → .+?(\w+)$/);
-      return parts ? { from: parts[1].trim(), to: parts[2].trim(), severity: f.severity, label: 'CYP' } : null;
-    }).filter(Boolean),
-    ...(findings.pd ?? []).filter((f: { contributingDrugs?: string[] }) => (f.contributingDrugs?.length ?? 0) >= 2).map((f: { contributingDrugs: string[]; class: string; severity: string }) => ({
+  // Build interaction graph edges from PD findings (structured contributingDrugs array)
+  // Cascade findings use unstructured text — extracting drug names from PD's typed array is more reliable
+  const interactions = (findings.pd ?? [])
+    .filter((f: { contributingDrugs?: string[] }) => (f.contributingDrugs?.length ?? 0) >= 2)
+    .map((f: { contributingDrugs: string[]; class: string; severity: string }) => ({
       from: f.contributingDrugs[0],
       to: f.contributingDrugs[1],
       severity: f.severity,
       label: f.class?.slice(0, 3) ?? 'PD',
-    })),
-  ];
+    }));
 
   return (
     <div className="space-y-6">

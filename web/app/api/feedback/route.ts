@@ -9,6 +9,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
+  const VALID_ACTIONS = ['accept', 'override', 'modify'];
+  if (!VALID_ACTIONS.includes(action)) {
+    return NextResponse.json({ error: `Invalid action. Must be one of: ${VALID_ACTIONS.join(', ')}` }, { status: 400 });
+  }
+
   try {
     logClinicianAction({ reviewId, findingId, action, reasonText, clinicianId, severity, drug, toolName });
     return NextResponse.json({ ok: true });

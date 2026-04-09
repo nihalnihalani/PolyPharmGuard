@@ -130,7 +130,14 @@ export async function checkLabMonitoring(input: {
     console.error('[lab-monitoring] LLM parse failed, using algorithmic findings');
   }
 
-  // TODO H1: merge rather than replace once all tools are stable
-  const finalFindings = llmFindings.length > 0 ? llmFindings : findings;
-  return finalFindings.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99));
+  // Use algorithmic findings as ground truth; LLM findings supplement (never replace)
+  const merged = [...findings];
+  for (const llmFinding of llmFindings) {
+    const isDuplicate = findings.some(af =>
+      af.finding.toLowerCase().includes(llmFinding.finding.toLowerCase().split(':')[0].toLowerCase()) ||
+      llmFinding.finding.toLowerCase().includes(af.finding.toLowerCase().split(':')[0].toLowerCase())
+    );
+    if (!isDuplicate) merged.push(llmFinding);
+  }
+  return merged.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99));
 }

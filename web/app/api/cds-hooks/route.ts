@@ -46,10 +46,20 @@ export async function POST(req: NextRequest) {
 
   if (medications.length === 0) return NextResponse.json({ cards: [] });
 
-  // Run interaction analysis
+  // Extract eGFR from prefetched observations (LOINC 33914-3) if available
+  let egfr: number | undefined;
+  if (context.observations?.entry?.[0]?.resource?.valueQuantity?.value !== undefined) {
+    egfr = context.observations.entry[0].resource.valueQuantity.value as number;
+  }
+  // Construct minimal PatientContext — only egfr matters for severity escalation in CDS context
+  const patientContext = egfr !== undefined
+    ? { patient: { resourceType: 'Patient' as const }, medications: [], observations: [], conditions: [], egfr }
+    : undefined;
+
+  // Run interaction analysis with patient context when available
   const [cascade, pd] = await Promise.all([
-    analyzeCascadeInteractions({ medications }).catch(() => []),
-    analyzePDInteractions({ medications }).catch(() => []),
+    analyzeCascadeInteractions({ medications, patientContext }).catch(() => []),
+    analyzePDInteractions({ medications, patientContext }).catch(() => []),
   ]);
 
   const allFindings = [
@@ -83,6 +93,7 @@ export async function GET() {
         description: 'Detects CYP450 cascade and pharmacodynamic interactions for newly prescribed medications',
         prefetch: {
           medications: 'MedicationRequest?patient={{context.patientId}}&status=active',
+          observations: 'Observation?patient={{context.patientId}}&code=33914-3&_sort=-date&_count=1',
         },
       },
       {
@@ -92,6 +103,7 @@ export async function GET() {
         description: 'Reviews active medication list for cascade interactions, PD risks, and dosing concerns',
         prefetch: {
           medications: 'MedicationRequest?patient={{context.patientId}}&status=active',
+          observations: 'Observation?patient={{context.patientId}}&code=33914-3&_sort=-date&_count=1',
         },
       },
     ],

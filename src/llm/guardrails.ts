@@ -11,11 +11,13 @@ const URL_WITH_CREDENTIALS_REPLACE = /https?:\/\/[^:@\s]+:[^@\s]+@[^\s]*/g;
 const JWT_REPLACE = /ey[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g;
 const LONG_TOKEN_REPLACE = /ey[A-Za-z0-9_-]{50,}/g;
 
+// No /g flag — these are used with .test() which is stateful with /g (lastIndex advances,
+// causing alternating true/false on repeated calls). /i alone gives case-insensitive matching.
 const UNSUPPORTED_CLAIM_PATTERNS = [
-  /studies show(?!\s+\[source:)/gi,
-  /research indicates(?!\s+\[source:)/gi,
-  /it is well known(?!\s+\[source:)/gi,
-  /evidence suggests(?!\s+\[source:)/gi,
+  /studies show(?!\s+\[source:)/i,
+  /research indicates(?!\s+\[source:)/i,
+  /it is well known(?!\s+\[source:)/i,
+  /evidence suggests(?!\s+\[source:)/i,
 ];
 
 export interface ValidationResult {
