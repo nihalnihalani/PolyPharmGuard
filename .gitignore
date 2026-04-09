@@ -6,3 +6,8 @@ build/
 *.log
 .DS_Store
 .claude/
+__pycache__/
+*.pyc
+*.pyo
+ml-service/.venv/
+ml-service/__pycache__/
