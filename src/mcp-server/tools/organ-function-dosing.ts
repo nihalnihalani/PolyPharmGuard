@@ -198,7 +198,16 @@ export async function checkOrganFunctionDosing(input: {
     }
   }
 
-  const findings = llmFindings.length > 0 ? llmFindings : algorithmicFindings;
+  // Use algorithmic findings as ground truth, LLM findings supplement
+  const merged = [...algorithmicFindings];
+  for (const llmFinding of llmFindings) {
+    const isDuplicate = algorithmicFindings.some(af =>
+      af.finding.toLowerCase().includes(llmFinding.finding.toLowerCase().split(':')[0].toLowerCase()) ||
+      llmFinding.finding.toLowerCase().includes(af.finding.toLowerCase().split(':')[0].toLowerCase())
+    );
+    if (!isDuplicate) merged.push(llmFinding);
+  }
+  const findings = merged;
 
   return findings.sort((a, b) =>
     (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99)

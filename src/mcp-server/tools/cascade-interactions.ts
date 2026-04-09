@@ -225,8 +225,16 @@ export async function analyzeCascadeInteractions(input: {
     }
   }
 
-  // Use LLM findings if available and non-empty, otherwise fall back to algorithmic
-  const findings = llmFindings.length > 0 ? llmFindings : algorithmicFindings;
+  // Use algorithmic findings as ground truth, LLM findings supplement
+  const merged = [...algorithmicFindings];
+  for (const llmFinding of llmFindings) {
+    const isDuplicate = algorithmicFindings.some(af =>
+      af.finding.toLowerCase().includes(llmFinding.finding.toLowerCase().split(':')[0].toLowerCase()) ||
+      llmFinding.finding.toLowerCase().includes(af.finding.toLowerCase().split(':')[0].toLowerCase())
+    );
+    if (!isDuplicate) merged.push(llmFinding);
+  }
+  const findings = merged;
 
   // Add manual review flags for unknown drugs
   if (unknownDrugs.length > 0) {
