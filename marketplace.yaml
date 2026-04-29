@@ -1,0 +1,162 @@
+# PolyPharmGuard — Prompt Opinion Marketplace listing manifest
+#
+# This file is the canonical source-of-truth for the marketplace entry. It is
+# checked into the repo so reviewers can audit what was registered. The exact
+# field set below mirrors the public po-community-mcp examples; the actual
+# upload to https://app.promptopinion.ai is performed either manually via the
+# UI (preferred for hackathon submission) or by `npm run publish:po`, which
+# POSTs this YAML to the marketplace API once PROMPT_OPINION_API_KEY is set.
+#
+# IMPORTANT: A few Prompt Opinion API specifics could not be confirmed from
+# inside this sandbox (no outbound network access at build time). The fields
+# below are the safe superset; see docs/marketplace-deployment.md for the
+# manual UI fallback that is guaranteed to work.
+
+apiVersion: promptopinion/v1
+kind: MarketplaceEntry
+
+metadata:
+  name: polypharmguard
+  displayName: PolyPharmGuard
+  version: 1.0.0
+  category: healthcare
+  tags:
+    - polypharmacy
+    - clinical-decision-support
+    - cyp450
+    - beers-criteria
+    - stoppfrail
+    - deprescribing
+    - fhir
+    - mcp
+    - a2a
+  authors:
+    - name: PolyPharmGuard Hackathon Team
+      url: https://github.com/nihalnihalani/PolyPharmGuard
+  license: MIT
+
+summary: >
+  Clinical polypharmacy reasoning engine. Replaces "alert everything" CDS with
+  contextual, patient-specific medication safety analysis: CYP450 cascade
+  detection, organ-function dose checking, and deprescribing screening.
+
+description: |
+  PolyPharmGuard analyzes the medication list of an individual patient against
+  three pillars of clinical evidence:
+
+    1. FDA CYP450 substrate / inhibitor / inducer tables
+    2. AGS 2023 Beers Criteria for potentially inappropriate medications
+    3. STOPPFrail criteria for frail older adults
+
+  Every finding cites its source. The LLM (Gemini) reasons only over the
+  encoded knowledge base — it never invents drug interactions. FHIR data
+  (eGFR, ALT/AST, conditions) is pulled at runtime via SHARP context headers.
+
+# --- MCP server (the core deliverable) ---
+mcp:
+  transport: streamable-http
+  endpoint: /mcp
+  healthCheck: /health
+  protocolVersion: "2025-06-18"
+  defaultPort: 3000
+  envVars:
+    - name: GEMINI_API_KEY
+      required: true
+      description: Google AI Studio key for clinical reasoning
+      secret: true
+    - name: MCP_TRANSPORT
+      required: false
+      default: stdio
+      description: Set to "http" for marketplace deployment
+    - name: MCP_PORT
+      required: false
+      default: "3000"
+    - name: FHIR_SERVER_URL
+      required: false
+      description: Optional fallback when SHARP headers absent
+    - name: FHIR_ACCESS_TOKEN
+      required: false
+      secret: true
+    - name: OPENFDA_API_KEY
+      required: false
+      description: Raises FAERS rate limit; not required for KB lookups
+      secret: true
+
+  # SHARP context — FHIR credentials per request, never in prompts.
+  sharpHeaders:
+    - X-FHIR-Server-URL
+    - X-FHIR-Access-Token
+    - X-Patient-ID
+
+  tools:
+    - name: analyze_cascade_interactions
+      description: >
+        Detect multi-drug CYP450 pharmacokinetic cascade interactions that
+        pairwise checkers miss. Returns ranked findings with full evidence
+        chains and citations.
+      tags: [cyp450, drug-interactions, pharmacokinetics]
+    - name: check_organ_function_dosing
+      description: >
+        Cross-reference each medication's dosing requirements against the
+        patient's current renal (eGFR) and hepatic (ALT/AST/bilirubin)
+        function. Flags contraindications and dose adjustments.
+      tags: [renal-dosing, hepatic-dosing, dose-adjustment]
+    - name: screen_deprescribing
+      description: >
+        Identify deprescribing candidates using AGS 2023 Beers Criteria and
+        STOPPFrail with prioritized recommendations and tapering schedules.
+      tags: [deprescribing, beers-criteria, stoppfrail]
+    - name: analyze_pharmacodynamic_interactions
+      description: >
+        Detect receptor-level drug interactions (CNS depression accumulation,
+        QT prolongation stacking, bleeding risk accumulation).
+      tags: [pharmacodynamics, qt-prolongation, bleeding-risk]
+    - name: check_pharmacogenomics
+      description: >
+        Identify gene-drug interactions for CYP2D6, CYP2C19, and CYP2C9
+        phenotypes affecting codeine, clopidogrel, warfarin, and others.
+      tags: [pharmacogenomics, cyp2d6, cyp2c19, cyp2c9]
+    - name: check_lab_monitoring
+      description: >
+        Flag medications requiring laboratory safety monitoring (INR, digoxin,
+        lithium, etc.) and identify missing, overdue, or out-of-range results.
+      tags: [lab-monitoring, drug-safety]
+
+# --- A2A MedReview Agent (orchestrator) ---
+a2a:
+  agentCard: src/a2a-agent/agent-card.json
+  defaultPort: 8000
+  protocolVersion: "0.2.0"
+  preferredTransport: JSONRPC
+
+# --- Hosting & runtime ---
+runtime:
+  language: node
+  nodeVersion: ">=20"
+  buildCommand: npm ci && npm run build
+  startCommand: npm run start:http
+  dockerfile: Dockerfile
+
+# --- Demo / evaluation ---
+demo:
+  patient:
+    id: mrs-johnson-001
+    description: 78-year-old female, eGFR 28, on 12 medications
+    fixturePath: data/synthea/mrs-johnson
+  scenarios:
+    - name: cascade_detection
+      tool: analyze_cascade_interactions
+      expectedFindings: ">= 3 CRITICAL or HIGH"
+    - name: renal_dosing
+      tool: check_organ_function_dosing
+      expectedFindings: "metformin contraindicated at eGFR 28"
+    - name: deprescribing
+      tool: screen_deprescribing
+      expectedFindings: "diphenhydramine flagged by Beers 2023"
+
+# --- Compliance ---
+compliance:
+  phi: false
+  dataSource: synthea-synthetic
+  auditLog: true
+  llmGroundedOnly: true
