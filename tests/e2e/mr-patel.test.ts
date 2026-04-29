@@ -143,6 +143,13 @@ describe('Mr. Raj Patel — AI Factor cascade case', () => {
       expect(cascade!.chain.every((step) => step.source && step.source.length > 0)).toBe(true);
       // Severity should be at least HIGH — strong inhibitor + major substrate
       expect(['CRITICAL', 'HIGH']).toContain(cascade!.severity);
+
+      // Clinical direction MUST be loss-of-efficacy, NOT toxicity (clopidogrel is a
+      // prodrug — CYP2C19 inhibition reduces active metabolite formation, not raises
+      // plasma levels). Anyone re-introducing the inversion will trip this assertion.
+      const text = `${cascade!.finding} ${cascade!.clinicalConsequence} ${cascade!.recommendation}`.toLowerCase();
+      expect(text).toMatch(/reduced|antiplatelet|stent thrombosis|loss of efficacy|under.?activation/);
+      expect(text).not.toMatch(/reduce clopidogrel dose|clopidogrel toxicity/);
     });
 
     it('FINDING #3: detects fluvoxamine→tizanidine CYP1A2 cascade (severe hypotension)', async () => {

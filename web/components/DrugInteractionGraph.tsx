@@ -14,6 +14,9 @@ interface Interaction {
   to: string;
   severity: string;
   label: string;
+  // Distinguishes cascade (PK / CYP) edges from pharmacodynamic edges so the
+  // graph can render them with different line styles.
+  kind?: 'cascade' | 'pd';
 }
 
 interface DrugInteractionGraphProps {
@@ -45,6 +48,7 @@ export function DrugInteractionGraph({ medications, interactions }: DrugInteract
           target: int.to.toLowerCase(),
           label: int.label,
           severity: int.severity,
+          kind: int.kind ?? 'pd',
           lineColor: EDGE_COLORS[int.severity] ?? EDGE_COLORS.LOW,
         },
       }));
@@ -83,6 +87,21 @@ export function DrugInteractionGraph({ medications, interactions }: DrugInteract
             },
           },
           {
+            // Cascade (PK) edges render solid + slightly thicker to set them apart
+            // from pharmacodynamic edges visually.
+            selector: 'edge[kind = "cascade"]',
+            style: {
+              'width': 3,
+              'line-style': 'solid',
+            },
+          },
+          {
+            selector: 'edge[kind = "pd"]',
+            style: {
+              'line-style': 'dashed',
+            },
+          },
+          {
             selector: ':selected',
             style: { 'background-color': '#3b82f6', 'border-color': '#60a5fa' },
           },
@@ -98,13 +117,21 @@ export function DrugInteractionGraph({ medications, interactions }: DrugInteract
     <div className="rounded-xl border border-gray-800 overflow-hidden">
       <div className="px-4 py-3 bg-gray-900 border-b border-gray-800 flex items-center justify-between">
         <span className="text-sm font-medium text-gray-300">Drug Interaction Network</span>
-        <div className="flex gap-3 text-xs">
+        <div className="flex gap-3 text-xs items-center">
           {Object.entries(EDGE_COLORS).map(([sev, color]) => (
             <span key={sev} className="flex items-center gap-1">
               <span className="w-3 h-0.5 inline-block" style={{ backgroundColor: color }} />
               <span className="text-gray-400">{sev}</span>
             </span>
           ))}
+          <span className="ml-2 flex items-center gap-1">
+            <span className="w-4 h-0.5 inline-block bg-gray-400" />
+            <span className="text-gray-400">cascade (PK)</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-4 h-0.5 inline-block bg-gray-400" style={{ borderTop: '1px dashed #9ca3af', backgroundColor: 'transparent' }} />
+            <span className="text-gray-400">PD</span>
+          </span>
         </div>
       </div>
       <div ref={containerRef} style={{ width: '100%', height: '400px', background: '#030712' }} />

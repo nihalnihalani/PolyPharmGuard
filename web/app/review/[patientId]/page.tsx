@@ -25,16 +25,34 @@ export default async function ReviewPage({ params }: { params: Promise<{ patient
     ...(findings.labMonitoring ?? []).map((f: Record<string, unknown>) => ({ ...f, toolName: 'lab-monitoring' })),
   ];
 
-  // Build interaction graph edges from PD findings (structured contributingDrugs array)
-  // Cascade findings use unstructured text — extracting drug names from PD's typed array is more reliable
-  const interactions = (findings.pd ?? [])
+  // Build interaction graph edges from BOTH PD and cascade findings.
+  // Both types now expose a structured contributingDrugs array; we tag each edge
+  // with a different label so cascade vs PD interactions are visually distinguishable.
+  const pdEdges = (findings.pd ?? [])
     .filter((f: { contributingDrugs?: string[] }) => (f.contributingDrugs?.length ?? 0) >= 2)
     .map((f: { contributingDrugs: string[]; class: string; severity: string }) => ({
       from: f.contributingDrugs[0],
       to: f.contributingDrugs[1],
       severity: f.severity,
       label: f.class?.slice(0, 3) ?? 'PD',
+      kind: 'pd' as const,
     }));
+
+  const cascadeEdges = (findings.cascade ?? [])
+    .filter((f: { contributingDrugs?: string[] }) => (f.contributingDrugs?.length ?? 0) >= 2)
+    .map((f: { contributingDrugs: string[]; finding: string; severity: string }) => {
+      // Pull the CYP enzyme out of the finding string for the edge label (e.g., "CYP2C19")
+      const enzymeMatch = f.finding.match(/CYP\d[A-Z]?\d*/i);
+      return {
+        from: f.contributingDrugs[0],
+        to: f.contributingDrugs[1],
+        severity: f.severity,
+        label: enzymeMatch ? enzymeMatch[0] : 'CYP',
+        kind: 'cascade' as const,
+      };
+    });
+
+  const interactions = [...cascadeEdges, ...pdEdges];
 
   return (
     <div className="space-y-6">
@@ -76,7 +94,7 @@ export default async function ReviewPage({ params }: { params: Promise<{ patient
         </div>
       </div>
 
-      <DrugInteractionGraph medications={medications} interactions={interactions as { from: string; to: string; severity: string; label: string }[]} />
+      <DrugInteractionGraph medications={medications} interactions={interactions as { from: string; to: string; severity: string; label: string; kind: 'cascade' | 'pd' }[]} />
 
       <div>
         <h2 className="text-lg font-semibold text-white mb-3">
