@@ -1,0 +1,110 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "id": "mr-patel-conditions",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "patel-cond-dm2",
+        "clinicalStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active", "display": "Active" }] },
+        "verificationStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed", "display": "Confirmed" }] },
+        "code": {
+          "coding": [
+            { "system": "http://snomed.info/sct", "code": "44054006", "display": "Diabetes mellitus type 2 (disorder)" },
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "E11.9", "display": "Type 2 diabetes mellitus without complications" }
+          ],
+          "text": "Type 2 Diabetes Mellitus"
+        },
+        "subject": { "reference": "Patient/mr-patel-001" },
+        "onsetDateTime": "2022-09-04"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "patel-cond-htn",
+        "clinicalStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active" }] },
+        "verificationStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed" }] },
+        "code": {
+          "coding": [
+            { "system": "http://snomed.info/sct", "code": "59621000", "display": "Essential hypertension (disorder)" },
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "I10", "display": "Essential (primary) hypertension" }
+          ],
+          "text": "Essential Hypertension"
+        },
+        "subject": { "reference": "Patient/mr-patel-001" },
+        "onsetDateTime": "2018-05-12"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "patel-cond-ocd",
+        "clinicalStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active" }] },
+        "verificationStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed" }] },
+        "code": {
+          "coding": [
+            { "system": "http://snomed.info/sct", "code": "191736004", "display": "Obsessive-compulsive disorder (disorder)" },
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "F42.9", "display": "Obsessive-compulsive disorder, unspecified" }
+          ],
+          "text": "Obsessive-Compulsive Disorder"
+        },
+        "subject": { "reference": "Patient/mr-patel-001" },
+        "onsetDateTime": "2026-03-20"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "patel-cond-covid",
+        "clinicalStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "resolved", "display": "Resolved" }] },
+        "verificationStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed" }] },
+        "code": {
+          "coding": [
+            { "system": "http://snomed.info/sct", "code": "840539006", "display": "Disease caused by Severe acute respiratory syndrome coronavirus 2 (disorder)" },
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "U07.1", "display": "COVID-19" }
+          ],
+          "text": "COVID-19 (recent, treated with Paxlovid)"
+        },
+        "subject": { "reference": "Patient/mr-patel-001" },
+        "onsetDateTime": "2026-04-16",
+        "abatementDateTime": "2026-04-26"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "patel-cond-des",
+        "clinicalStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active" }] },
+        "verificationStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed" }] },
+        "code": {
+          "coding": [
+            { "system": "http://snomed.info/sct", "code": "129303009", "display": "Insertion of coronary artery stent (procedure)" },
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "Z95.5", "display": "Presence of coronary angioplasty implant and graft" }
+          ],
+          "text": "Status post drug-eluting coronary stent (PCI 2025-07-29; minimum 12-month DAPT)"
+        },
+        "subject": { "reference": "Patient/mr-patel-001" },
+        "onsetDateTime": "2025-07-29"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "patel-cond-spasm",
+        "clinicalStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active" }] },
+        "verificationStatus": { "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed" }] },
+        "code": {
+          "coding": [
+            { "system": "http://snomed.info/sct", "code": "428905001", "display": "Lumbar muscle spasm (finding)" },
+            { "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "M62.838", "display": "Other muscle spasm" }
+          ],
+          "text": "Chronic lumbar muscle spasm"
+        },
+        "subject": { "reference": "Patient/mr-patel-001" },
+        "onsetDateTime": "2025-11-10"
+      }
+    }
+  ]
+}

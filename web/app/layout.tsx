@@ -21,7 +21,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </Link>
           <span className="text-xs text-gray-500">Clinical Medication Safety Engine</span>
           <div className="ml-auto flex items-center gap-6 text-sm">
-            <Link href="/review/mrs-johnson" className="text-gray-400 hover:text-white transition-colors">Demo Review</Link>
+            <Link href="/review/mr-patel-001" className="text-gray-400 hover:text-white transition-colors">Mr. Patel</Link>
+            <Link href="/review/mrs-johnson" className="text-gray-400 hover:text-white transition-colors">Mrs. Johnson</Link>
+            <Link href="/comparison" className="text-red-400 hover:text-red-300 transition-colors">Pairwise vs. Synthesis</Link>
             <Link href="/batch" className="text-gray-400 hover:text-white transition-colors">Review Queue</Link>
           </div>
         </nav>
