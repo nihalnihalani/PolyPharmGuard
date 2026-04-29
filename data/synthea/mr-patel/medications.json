@@ -1,0 +1,170 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "id": "mr-patel-medications",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "patel-medreq-001",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mr-patel-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "42355", "display": "Fluvoxamine" }],
+          "text": "Fluvoxamine 100mg"
+        },
+        "dosageInstruction": [{
+          "text": "100mg once daily for OCD",
+          "timing": { "repeat": { "frequency": 1, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 100, "unit": "mg" } }]
+        }],
+        "authoredOn": "2026-04-01",
+        "note": [{ "text": "Started 4 weeks ago for newly diagnosed OCD." }]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "patel-medreq-002",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mr-patel-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "10502", "display": "Tizanidine" }],
+          "text": "Tizanidine 4mg"
+        },
+        "dosageInstruction": [{
+          "text": "4mg three times daily as needed for muscle spasm",
+          "timing": { "repeat": { "frequency": 3, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 4, "unit": "mg" } }],
+          "asNeededBoolean": true
+        }],
+        "authoredOn": "2025-11-10"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "patel-medreq-003",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mr-patel-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "32968", "display": "Clopidogrel" }],
+          "text": "Clopidogrel 75mg"
+        },
+        "dosageInstruction": [{
+          "text": "75mg once daily — DAPT post drug-eluting stent",
+          "timing": { "repeat": { "frequency": 1, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 75, "unit": "mg" } }]
+        }],
+        "authoredOn": "2025-07-29",
+        "note": [{ "text": "Started after PCI with drug-eluting stent placement on 2025-07-29. Minimum 12 months DAPT planned." }]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "patel-medreq-004",
+        "status": "completed",
+        "intent": "order",
+        "subject": { "reference": "Patient/mr-patel-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "2587902", "display": "Nirmatrelvir/Ritonavir" }],
+          "text": "Nirmatrelvir 300mg / Ritonavir 100mg (Paxlovid)"
+        },
+        "dosageInstruction": [{
+          "text": "300mg/100mg twice daily x 5 days for COVID-19",
+          "timing": { "repeat": { "frequency": 2, "period": 1, "periodUnit": "d", "boundsDuration": { "value": 5, "unit": "d" } } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] }
+        }],
+        "authoredOn": "2026-04-17",
+        "note": [{ "text": "5-day Paxlovid course completed 2026-04-22 (7 days ago). Ritonavir is a strong CYP3A4 inhibitor; clinically significant CYP3A4 inhibition persists ~3-4 days after the last dose due to mechanism-based (irreversible) inhibition." }]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "patel-medreq-005",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mr-patel-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "83367", "display": "Atorvastatin" }],
+          "text": "Atorvastatin 40mg"
+        },
+        "dosageInstruction": [{
+          "text": "40mg once daily at bedtime",
+          "timing": { "repeat": { "frequency": 1, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 40, "unit": "mg" } }]
+        }],
+        "authoredOn": "2025-07-29"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "patel-medreq-006",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mr-patel-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "29046", "display": "Lisinopril" }],
+          "text": "Lisinopril 20mg"
+        },
+        "dosageInstruction": [{
+          "text": "20mg once daily",
+          "timing": { "repeat": { "frequency": 1, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 20, "unit": "mg" } }]
+        }],
+        "authoredOn": "2024-02-15"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "patel-medreq-007",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mr-patel-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "6809", "display": "Metformin" }],
+          "text": "Metformin 1000mg"
+        },
+        "dosageInstruction": [{
+          "text": "1000mg twice daily with meals",
+          "timing": { "repeat": { "frequency": 2, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 1000, "unit": "mg" } }]
+        }],
+        "authoredOn": "2022-09-04"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "patel-medreq-008",
+        "status": "active",
+        "intent": "order",
+        "subject": { "reference": "Patient/mr-patel-001" },
+        "medicationCodeableConcept": {
+          "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "1191", "display": "Aspirin" }],
+          "text": "Aspirin 81mg"
+        },
+        "dosageInstruction": [{
+          "text": "81mg once daily — DAPT post drug-eluting stent",
+          "timing": { "repeat": { "frequency": 1, "period": 1, "periodUnit": "d" } },
+          "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] },
+          "doseAndRate": [{ "doseQuantity": { "value": 81, "unit": "mg" } }]
+        }],
+        "authoredOn": "2025-07-29"
+      }
+    }
+  ]
+}
