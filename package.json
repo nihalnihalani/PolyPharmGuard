@@ -8,6 +8,7 @@
     "dev": "tsx src/mcp-server/index.ts",
     "dev:http": "MCP_TRANSPORT=http tsx src/mcp-server/index.ts",
     "build": "tsc",
+    "postbuild": "mkdir -p dist/src/knowledge-base dist/src/a2a-agent dist/data && cp -R src/knowledge-base/. dist/src/knowledge-base/ && cp src/a2a-agent/agent-card.json dist/src/a2a-agent/agent-card.json && cp -R data/synthea dist/data/synthea",
     "start": "node dist/src/mcp-server/index.js",
     "start:http": "MCP_TRANSPORT=http node dist/src/mcp-server/index.js",
     "agent:dev": "tsx src/a2a-agent/index.ts",
