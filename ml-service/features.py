@@ -1,5 +1,13 @@
+"""Lightweight feature extraction helpers.
+
+These helpers normalize patient inputs into bounded numeric values. They are
+NOT used by an ML model (PolyPharmGuard does not ship a trained model); they
+exist for diagnostic / inspection purposes and may be used by future analytics.
+The active risk score is computed by ``scorer.compute_risk_score`` as a
+transparent additive heuristic.
+"""
+
 from dataclasses import dataclass
-from typing import Optional
 
 HIGH_RISK_CLASSES = {
     "anticoagulants": ["warfarin", "apixaban", "rivaroxaban", "dabigatran", "enoxaparin"],
@@ -26,7 +34,10 @@ class PatientFeatures:
 
 
 def extract_features(payload: dict) -> list[float]:
-    """Extract normalized feature vector from review payload."""
+    """Return a normalized numeric feature vector for diagnostics/logging.
+
+    Not consumed by the active scorer; preserved for downstream analytics.
+    """
     age = payload.get("age", 65)
     egfr = payload.get("egfr", 90)
     medications = [m.lower() for m in payload.get("medications", [])]
@@ -36,7 +47,7 @@ def extract_features(payload: dict) -> list[float]:
     lab_gaps = payload.get("lab_gaps", 0)
     hepatic_score = payload.get("hepatic_score", 0.0)
 
-    # Check for high-risk drug classes
+    # Detect high-risk drug classes by substring match against known generic names.
     has_anticoagulant = float(any(
         any(drug in med for drug in HIGH_RISK_CLASSES["anticoagulants"])
         for med in medications
