@@ -6,19 +6,32 @@ import { analyzePDInteractions } from '../../../../../src/mcp-server/tools/pd-in
 import { checkLabMonitoring } from '../../../../../src/mcp-server/tools/lab-monitoring';
 import { logToolCall } from '../../../../../src/audit/db';
 import { loadMrsJohnsonData } from '../../../../../data/synthea/mrs-johnson/index';
+import { loadMrPatelData } from '../../../../../data/synthea/mr-patel/index';
 import { createHash } from 'node:crypto';
 
 function hashInput(input: unknown): string {
   return createHash('sha256').update(JSON.stringify(input)).digest('hex').slice(0, 16);
 }
 
+/**
+ * Dispatch synthetic patient bundle by patientId.
+ * Production builds would resolve via FHIR server; for the hackathon demo we
+ * route between hand-curated cases. Unknown IDs fall back to Mrs. Johnson so
+ * existing links keep working.
+ */
+function loadPatientByID(patientId: string) {
+  const id = patientId.toLowerCase();
+  if (id.includes('patel')) return loadMrPatelData();
+  return loadMrsJohnsonData();
+}
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ patientId: string }> }) {
   const { patientId } = await params;
   const start = Date.now();
 
-  // For demo: use Mrs. Johnson data
-  // In production: fetch from FHIR server using patientId
-  const patientData = loadMrsJohnsonData();
+  // For demo: dispatch synthetic patients by ID.
+  // In production: fetch from FHIR server using patientId.
+  const patientData = loadPatientByID(patientId);
 
   // Extract medication names from FHIR resources
   const medications = patientData.medications.map(m => m.medicationCodeableConcept?.text ?? 'Unknown');
