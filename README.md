@@ -92,15 +92,17 @@ A thin orchestration agent that composes the three MCP tools into a complete med
     +---------v---------------------v---------------------v----------+
     |              Local CYP450 Knowledge Base                       |
     |  (FDA Tables + Beers Criteria + STOPPFrail + Renal Dosing)    |
-    +---------+-------------------------------------+---------+------+
-              |                                     |         |
-    +---------v--------+               +------------v---+  +--v-----------+
-    | FHIR MCP Server  |               | openFDA FAERS  |  | Med Terms    |
-    | (Patient data,   |               | (Severity      |  | MCP (ICD-11, |
-    |  labs, meds)     |               |  enrichment)   |  |  SNOMED,     |
-    +------------------+               +----------------+  |  LOINC,      |
-                                                           |  RxNorm)     |
-                                                           +--------------+
+    +---------+------------------------------------------------------+
+              |
+    +---------v--------+
+    | FHIR MCP Server  |
+    | (Patient data,   |
+    |  labs, meds)     |
+    +------------------+
+
+    Future work (NOT implemented in this hackathon submission):
+    - openFDA FAERS adverse-event severity enrichment
+    - Medical Terminologies MCP (ICD-11, SNOMED, LOINC, RxNorm) lookup
 ```
 
 ---
@@ -113,8 +115,9 @@ A thin orchestration agent that composes the three MCP tools into a complete med
 | A2A Agent | Google ADK (po-adk-typescript reference) | Free |
 | LLM | Gemini via Google AI Studio | Free |
 | FHIR Data | AgentCare or Momentum FHIR MCP + HAPI FHIR | Free |
-| Drug Data | Local CYP450 KB (FDA tables) + openFDA FAERS | Free |
-| Terminology | Medical Terminologies MCP (27 tools) | Free |
+| Drug Data | Local CYP450 KB (FDA tables) | Free |
+| Terminology | RxNorm CUIs hard-coded in local KB *(Medical Terminologies MCP integration: future work)* | Free |
+| Adverse-event enrichment | *Future work — openFDA FAERS not implemented in this submission* | Free |
 | Patient Data | Synthea synthetic patients | Free |
 | Guardrails | NeMo Guardrails / Guardrails AI | Free |
 | Platform | Prompt Opinion Marketplace | Free |
