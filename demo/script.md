@@ -44,13 +44,13 @@ Format: `[mm:ss–mm:ss]` `[VOICEOVER]` / `[ON-SCREEN]` / `[CURSOR]`
 
 ### Beat 2.1 — Mr. Patel: the subtle case (0:30–0:55)
 
-`[ON-SCREEN]` Click "Review Queue" in the nav. Land on `/batch`. Three patient rows visible — Mr. Patel at top with risk score 81 CRITICAL. Hover then click his row.
+`[ON-SCREEN]` Click "Review Queue" in the nav. Land on `/batch`. Two patient rows visible — Mr. Patel at top with risk score 80 CRITICAL, Mrs. Johnson below. Hover then click his row.
 
-`[VOICEOVER]` Meet Mr. Patel. Sixty-eight, on fluvoxamine, tizanidine, and clopidogrel. He just finished a Paxlovid course. Every pairwise checker his pharmacy uses passed him. Ours didn't.
+`[VOICEOVER]` Meet Mr. Patel. Sixty-two, on fluvoxamine, tizanidine, and clopidogrel — and he just finished a Paxlovid course. Every pairwise checker his pharmacy uses passed him. Ours didn't.
 
 `[CURSOR]` Click "Review" next to Mr. Patel. Page transitions to `/review/mr-patel`.
 
-`[ON-SCREEN]` Risk gauge spins up to 81 / CRITICAL in red. A side-by-side panel slides in: left "Pairwise Checker — 0 critical alerts." Right: "PolyPharmGuard — 4 cited cascade findings."
+`[ON-SCREEN]` Risk gauge spins up to 80 / CRITICAL in red. A side-by-side panel slides in: left "Pairwise Checker — 0 critical alerts." Right: "PolyPharmGuard — 4 cited cascade findings."
 
 ### Beat 2.2 — The synthesis moment (0:55–1:20)
 
@@ -63,9 +63,9 @@ Format: `[mm:ss–mm:ss]` `[VOICEOVER]` / `[ON-SCREEN]` / `[CURSOR]`
 ### Beat 2.3 — The hero surfaces (1:20–1:35)
 
 `[ON-SCREEN]` Scroll smoothly down the review page. Show, in order:
-- Composite risk gauge with named factors ("CYP1A2 saturation, recent ritonavir, CrCl 52")
-- Cytoscape drug interaction graph with 4 colored edges between fluvoxamine, tizanidine, clopidogrel, and ritonavir
-- Medication risk matrix table (8 rows of meds × cascade / PD / renal / Beers / lab columns)
+- Composite risk gauge with named factors: "Active CYP cascade finding (HIGH) x2", "Prodrug activation failure x1", "Residual CYP3A4 inhibitor window", "DAPT at risk"
+- Cytoscape drug interaction graph with colored edges from fluvoxamine to clopidogrel, tizanidine, and atorvastatin
+- Medication risk matrix table (rows of meds × cascade / PD / renal / Beers / lab columns)
 
 `[VOICEOVER]` Composite risk index. Drug interaction graph. Medication-by-risk-factor matrix. Every red cell links back to a citation.
 
@@ -85,7 +85,7 @@ Format: `[mm:ss–mm:ss]` `[VOICEOVER]` / `[ON-SCREEN]` / `[CURSOR]`
 
 ### Beat 3.1 — Pharmacist queue (1:50–2:00)
 
-`[ON-SCREEN]` Click nav "Review Queue" — back to `/batch`. Three patients ranked by 90-day risk score: Mr. Patel 81, Mrs. Johnson 74, Mr. Doe 52.
+`[ON-SCREEN]` Click nav "Review Queue" — back to `/batch`. Two patients ranked by composite risk index: Mr. Patel 80 / CRITICAL on top, Mrs. Johnson around 74 / CRITICAL below.
 
 `[VOICEOVER]` Pharmacists triage by risk, not by alphabet. Highest-risk patient first.
 
@@ -149,6 +149,6 @@ In priority order, drop these to claw back time:
 
 Voice-over text only (no stage directions):
 
-> Twenty-three alerts. The doctor ignored every single one. Three of them could have killed her. Ninety-five percent of EHR drug alerts are overridden. The result: one-point-three million emergency visits a year, thirty billion dollars in preventable harm. The problem isn't too few alerts. It's that none of them are about this patient. PolyPharmGuard replaces the alert wall with cited clinical reasoning. Three MCP tools, one A2A agent, real FHIR data. Meet Mr. Patel. Sixty-eight, on fluvoxamine, tizanidine, and clopidogrel. He just finished a Paxlovid course. Every pairwise checker his pharmacy uses passed him. Ours didn't. Fluvoxamine is a strong CYP1A2 inhibitor. Tizanidine is metabolized by CYP1A2. The AUC goes up tenfold. That alone is dangerous. Add residual ritonavir from Paxlovid blocking CYP3A4, plus clopidogrel — a CYP2C19 prodrug now competing for what's left — and you have a synergistic hypotension and bleeding risk that no two-drug rule could see. Composite risk index. Drug interaction graph. Medication-by-risk-factor matrix. Every red cell links back to a citation. And Mrs. Johnson, seventy-eight, twelve meds, eGFR twenty-eight. We catch the obvious things too — fluconazole inhibiting CYP3A4 to spike her simvastatin three-fold, with renal impairment amplifying rhabdomyolysis risk. Plus a four-week taper plan for the PPI she's been on for a decade. Pharmacists triage by risk, not by alphabet. Highest-risk patient first. Inside the EHR, we ship as standard HL7 CDS Hooks. No custom integration. Every order screen gets cited findings — not generic alerts. PolyPharmGuard is discoverable, invocable, and billable inside Prompt Opinion. SHARP context flows in. Findings flow back. Six MCP tools. One A2A orchestrator. SHARP-secured FHIR. Gemini reasoning grounded only on verified knowledge bases — every finding cites its source. Twenty-three alerts is alert fatigue. Three cited findings is medicine. PolyPharmGuard. Reasoning, not warnings.
+> Twenty-three alerts. The doctor ignored every single one. Three of them could have killed her. Ninety-five percent of EHR drug alerts are overridden. The result: one-point-three million emergency visits a year, thirty billion dollars in preventable harm. The problem isn't too few alerts. It's that none of them are about this patient. PolyPharmGuard replaces the alert wall with cited clinical reasoning. Three MCP tools, one A2A agent, real FHIR data. Meet Mr. Patel. Sixty-two, on fluvoxamine, tizanidine, and clopidogrel — and he just finished a Paxlovid course. Every pairwise checker his pharmacy uses passed him. Ours didn't. Fluvoxamine is a strong CYP1A2 inhibitor. Tizanidine is metabolized by CYP1A2. The AUC goes up tenfold. That alone is dangerous. Add residual ritonavir from Paxlovid blocking CYP3A4, plus clopidogrel — a CYP2C19 prodrug whose bioactivation fluvoxamine also inhibits — and you have a synergistic hypotension and bleeding risk that no two-drug rule could see. Composite risk index. Drug interaction graph. Medication-by-risk-factor matrix. Every red cell links back to a citation. And Mrs. Johnson, seventy-eight, twelve meds, eGFR twenty-eight. We catch the obvious things too — fluconazole inhibiting CYP3A4 to spike her simvastatin three-fold, with renal impairment amplifying rhabdomyolysis risk. Plus a four-week taper plan for the PPI she's been on for a decade. Pharmacists triage by risk, not by alphabet. Highest-risk patient first. Inside the EHR, we ship as standard HL7 CDS Hooks. No custom integration. Every order screen gets cited findings — not generic alerts. PolyPharmGuard is discoverable, invocable, and billable inside Prompt Opinion. SHARP context flows in. Findings flow back. Six MCP tools. One A2A orchestrator. SHARP-secured FHIR. Gemini reasoning grounded only on verified knowledge bases — every finding cites its source. Twenty-three alerts is alert fatigue. Three cited findings is medicine. PolyPharmGuard. Reasoning, not warnings.
 
-**Spoken word count: 296 words → ~2:07 of pure speech at 140 wpm. With ~15s of pauses/beats from narration.md, realistic delivery: 2:20–2:30. Safely within target.**
+**Spoken word count: ~296 words → ~2:07 of pure speech at 140 wpm. With ~15s of pauses/beats from narration.md, realistic delivery: 2:20–2:30. Safely within target.**

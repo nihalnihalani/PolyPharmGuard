@@ -36,7 +36,7 @@ Pure VO copy. No stage directions. Paste directly into ElevenLabs / OpenAI tts-1
 
 ## Section 2 — The AI Reasoning  [0:30–1:50]
 
-> Meet Mr. Patel. Sixty-eight, on fluvoxamine, tizanidine, and clopidogrel. He just finished a Paxlovid course.
+> Meet Mr. Patel. Sixty-two, on fluvoxamine, tizanidine, and clopidogrel — and he just finished a Paxlovid course.
 >
 > Every pairwise checker his pharmacy uses passed him.
 >
@@ -48,7 +48,7 @@ Pure VO copy. No stage directions. Paste directly into ElevenLabs / OpenAI tts-1
 >
 > Fluvoxamine is a strong CYP1A2 inhibitor. Tizanidine is metabolized by CYP1A2. The AUC goes up tenfold.
 >
-> That alone is dangerous. Add residual ritonavir from Paxlovid blocking CYP3A4, plus clopidogrel — a CYP2C19 prodrug now competing for what's left — and you have a synergistic hypotension and bleeding risk that no two-drug rule could see.
+> That alone is dangerous. Add residual ritonavir from Paxlovid blocking CYP3A4, plus clopidogrel — a CYP2C19 prodrug whose bioactivation fluvoxamine also inhibits — and you have a synergistic hypotension and bleeding risk that no two-drug rule could see.
 >
 > *(0.5s)*
 >

@@ -44,12 +44,12 @@ Browser: Chrome (latest), profile with no extensions visible, zoom 110%.
 - **URL**: `http://localhost:3001/batch`
 - **Route file**: `web/app/batch/page.tsx`
 - **Viewport**: 1440x900
-- **Demo data prerequisite**: `web/app/batch/page.tsx` must list **Mr. Patel** at top with risk 81 CRITICAL. Currently the file lists Mrs. Johnson / John Doe / Jane Smith. **Action required for Demo Producer or Tool Dev 3: update the `DEMO_PATIENTS` array to include Mr. Patel as first row.** Note this in the recording checklist as a gating item.
+- **Demo data prerequisite**: `web/app/batch/page.tsx` is now a server component that fetches real scores from `/api/review/{id}` for the two real synthea patients (Mr. Patel, Mrs. Johnson) and sorts descending. With the prodrug-failure / residual-CYP3A4 / DAPT-at-risk factors landed, Mr. Patel renders **80 CRITICAL** above Mrs. Johnson **~74 CRITICAL**. Confirm with `curl http://localhost:3001/api/review/mr-patel | jq '.riskScore.score'` before record day. No vapor patients (John Doe / Jane Smith removed).
 - **Cursor sequence**:
-  1. Page loads, three patient cards visible
-  2. Cursor hovers Mr. Patel's red 81 badge — 1s
+  1. Page loads, two patient cards visible
+  2. Cursor hovers Mr. Patel's red 80 badge — 1s
   3. Cursor clicks "Review" button on Mr. Patel row
-- **What must be visible**: title "Pharmacist Review Queue", three risk-ranked patient cards with score badges
+- **What must be visible**: title "Pharmacist Review Queue", two risk-ranked patient cards with real score badges
 - **Duration on screen**: 10s queue view + transition
 
 ## SHOT-05 — Mr. Patel medication review (HERO SHOT)
@@ -57,15 +57,15 @@ Browser: Chrome (latest), profile with no extensions visible, zoom 110%.
 - **URL**: `http://localhost:3001/review/mr-patel`
 - **Route file**: `web/app/review/[patientId]/page.tsx`
 - **Viewport**: 1440x900, but expect to scroll
-- **Demo data prerequisite**: **CRITICAL — `data/synthea/mr-patel/` synthea bundle does not yet exist.** Agent 3 ("Tool Dev 1") is producing it. Required: patient.json, medications.json (must include fluvoxamine, tizanidine, clopidogrel, ritonavir/recent Paxlovid course), conditions.json, observations.json (CrCl 52). Without this, route will 500. **Must verify before record day.**
+- **Demo data prerequisite**: `data/synthea/mr-patel/` bundle is in place: patient.json (DOB 1963-09-12, age 62), medications.json (fluvoxamine 100mg, tizanidine 4mg, clopidogrel 75mg, completed Paxlovid course within last ~10 days, atorvastatin 40mg, lisinopril 20mg, metformin 1000mg, aspirin 81mg), conditions.json (T2DM, HTN, OCD, COVID resolved, post-DES, lumbar spasm), observations.json (eGFR 78, HbA1c 7.2). Risk score with new factors: **80 CRITICAL**.
 - **Cursor sequence**:
-  1. Page loads, gauge animates to 81 CRITICAL
+  1. Page loads, gauge animates to 80 CRITICAL
   2. Pairwise-vs-PolyPharmGuard side-by-side overlay appears (this is an editing overlay added in post — NOT part of the live page)
   3. Cursor expands top finding in evidence accordion
   4. Cursor moves down each of 4 numbered chain steps
   5. Cursor scrolls smoothly to Cytoscape graph — wait for layout settle (1.5s)
   6. Cursor hovers a red cell in the Medication Risk Matrix to surface tooltip
-- **What must be visible**: RiskScoreGauge (81 CRITICAL), Drug Interaction Graph (Cytoscape), Medication Risk Matrix, Evidence Chain Accordion with 4 numbered steps + FDA citations
+- **What must be visible**: RiskScoreGauge (80 CRITICAL with named factors: CYP cascade HIGH x2, Prodrug activation failure, Residual CYP3A4 inhibitor window, DAPT at risk), Drug Interaction Graph with fluvoxamine → clopidogrel/tizanidine/atorvastatin edges, Medication Risk Matrix, Evidence Chain Accordion with numbered steps + FDA citations
 - **Duration on screen**: 60 seconds (longest single shot)
 
 ## SHOT-06 — Mrs. Johnson medication review
@@ -135,16 +135,14 @@ Browser: Chrome (latest), profile with no extensions visible, zoom 110%.
 | Shot | Route exists? | Component(s) verified |
 |------|--------------|----------------------|
 | SHOT-03 `/` | YES | `web/app/page.tsx` |
-| SHOT-04 `/batch` | YES | `web/app/batch/page.tsx` — but NEEDS Mr. Patel added to DEMO_PATIENTS |
-| SHOT-05 `/review/mr-patel` | route handler exists; PATIENT DATA MISSING | `web/app/review/[patientId]/page.tsx` reads from `/api/review/[patientId]` |
+| SHOT-04 `/batch` | YES | `web/app/batch/page.tsx` is now a server component that fetches real scores |
+| SHOT-05 `/review/mr-patel` | YES | `web/app/review/[patientId]/page.tsx` reads from `/api/review/[patientId]`; bundle present at `data/synthea/mr-patel/` |
 | SHOT-06 `/review/mrs-johnson` | YES | data verified at `data/synthea/mrs-johnson/` |
 | SHOT-07 `/api/cds-hooks` | YES | `web/app/api/cds-hooks/route.ts` |
 
 ## Open dependencies for other agents
 
-1. **Agent 3 (Tool Dev 1)**: ship `data/synthea/mr-patel/` bundle. Without it, SHOT-05 cannot be recorded. Must include fluvoxamine, tizanidine, clopidogrel, recent Paxlovid (ritonavir).
-2. **Whoever owns `/batch`**: append `{ id: 'mr-patel', name: 'Mr. Patel', age: 68, meds: 9, risk: 81, interpretation: 'CRITICAL' }` to `DEMO_PATIENTS` and re-sort by risk descending.
-3. **Pairwise-vs-PolyPharmGuard side-by-side overlay** (Beat 2.1): can be done as a post-production graphic overlay if the route doesn't surface it natively. Demo Producer will assemble in editor.
+1. **Pairwise-vs-PolyPharmGuard side-by-side overlay** (Beat 2.1): can be done as a post-production graphic overlay if the route doesn't surface it natively. Demo Producer will assemble in editor.
 
 ## Recording order recommendation
 
