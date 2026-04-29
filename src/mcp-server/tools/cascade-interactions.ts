@@ -114,6 +114,15 @@ function detectAlgorithmicCascades(
         const isMajorSubstrate = substrateRel.role.includes('major');
         const isStrongInhibitor = inhibition.strength.includes('strong');
         const isModerateInhibitor = inhibition.strength.includes('moderate');
+        const isProdrug = substrateEntry.prodrug === true;
+
+        // Detect post-DES / post-stent context — escalates prodrug findings to CRITICAL.
+        // Loss of antiplatelet efficacy in a stented patient is a life-threatening
+        // stent-thrombosis risk (per FDA Black Box Warning, clopidogrel 2010).
+        const conditionsBlob = (patientContext?.conditions ?? [])
+          .map((c) => JSON.stringify(c).toLowerCase())
+          .join(' ');
+        const hasStentContext = /stent|\bdes\b|drug.eluting|pci|percutaneous coronary/.test(conditionsBlob);
 
         // Determine severity
         // Severe renal impairment (eGFR < 30) escalates any inhibition by one tier —
@@ -125,25 +134,51 @@ function detectAlgorithmicCascades(
         } else if (isStrongInhibitor || (isModerateInhibitor && isMajorSubstrate)) {
           severity = severeRenal ? 'HIGH' : 'MODERATE';
         }
+        // Prodrug + post-stent context → CRITICAL regardless (stent thrombosis risk).
+        if (isProdrug && hasStentContext) {
+          severity = 'CRITICAL';
+        }
 
-        // Build evidence chain
-        const chain: CascadeChainStep[] = [
-          {
-            step: 1,
-            fact: `${inhibitorMed.name} is a ${inhibition.strength.replace('_', ' ')} of ${enzyme}`,
-            source: inhibition.source,
-          },
-          {
-            step: 2,
-            fact: `${substrateMed.name} is a ${substrateRel.role.replace('_', ' ')} of ${enzyme}, meaning its metabolism depends critically on this enzyme`,
-            source: substrateRel.source,
-          },
-          {
-            step: 3,
-            fact: `${enzyme} inhibition by ${inhibitorMed.name} reduces metabolism of ${substrateMed.name}, increasing plasma levels${isStrongInhibitor && isMajorSubstrate ? ' up to 5-20 fold' : ''}`,
-            source: `${inhibition.source} (pharmacokinetic consequence of enzyme inhibition)`,
-          },
-        ];
+        // Build evidence chain — branched for prodrug substrates.
+        // For a prodrug, CYP inhibition REDUCES active metabolite formation
+        // (loss of efficacy), not increases plasma levels (toxicity).
+        const chain: CascadeChainStep[] = isProdrug
+          ? [
+              {
+                step: 1,
+                fact: `${inhibitorMed.name} is a ${inhibition.strength.replace('_', ' ')} of ${enzyme}`,
+                source: inhibition.source,
+              },
+              {
+                step: 2,
+                fact: `${substrateMed.name} is a PRODRUG that requires ${enzyme} bioactivation to its active metabolite`,
+                source: substrateRel.source,
+              },
+              {
+                step: 3,
+                fact: `${enzyme} inhibition by ${inhibitorMed.name} REDUCES active metabolite formation of ${substrateMed.name}, causing LOSS of therapeutic efficacy (not toxicity)`,
+                source: substrateEntry.prodrugNote
+                  ? `${inhibition.source}; ${substrateEntry.prodrugNote.split('.')[0]}.`
+                  : `${inhibition.source} (prodrug bioactivation pathway)`,
+              },
+            ]
+          : [
+              {
+                step: 1,
+                fact: `${inhibitorMed.name} is a ${inhibition.strength.replace('_', ' ')} of ${enzyme}`,
+                source: inhibition.source,
+              },
+              {
+                step: 2,
+                fact: `${substrateMed.name} is a ${substrateRel.role.replace('_', ' ')} of ${enzyme}, meaning its metabolism depends critically on this enzyme`,
+                source: substrateRel.source,
+              },
+              {
+                step: 3,
+                fact: `${enzyme} inhibition by ${inhibitorMed.name} reduces metabolism of ${substrateMed.name}, increasing plasma levels${isStrongInhibitor && isMajorSubstrate ? ' up to 5-20 fold' : ''}`,
+                source: `${inhibition.source} (pharmacokinetic consequence of enzyme inhibition)`,
+              },
+            ];
 
         if (patientContext?.egfr !== undefined && patientContext.egfr < 30) {
           chain.push({
@@ -153,13 +188,34 @@ function detectAlgorithmicCascades(
           });
         }
 
-        const finding: CascadeFinding = {
-          finding: `${enzyme} INHIBITION CASCADE: ${inhibitorMed.name} → ↑${substrateMed.name} levels`,
-          severity,
-          chain,
-          clinicalConsequence: `Elevated ${substrateMed.name} plasma levels due to ${enzyme} inhibition by ${inhibitorMed.name}. Risk of ${substrateMed.name}-associated toxicity.`,
-          recommendation: `Monitor for ${substrateMed.name} toxicity. Consider reducing ${substrateMed.name} dose or switching to an alternative not metabolized by ${enzyme}.`,
-        };
+        if (isProdrug && hasStentContext) {
+          chain.push({
+            step: chain.length + 1,
+            fact: `Patient has post-DES/stent context — loss of ${substrateMed.name} antiplatelet efficacy raises stent thrombosis risk (FDA Black Box Warning, 2010)`,
+            source: 'FHIR Condition (post-DES/stent)',
+          });
+        }
+
+        const finding: CascadeFinding = isProdrug
+          ? {
+              finding: `${enzyme} INHIBITION → REDUCED active metabolite of ${substrateMed.name}: ${inhibitorMed.name} blocks ${enzyme} activation of ${substrateMed.name} prodrug → loss of therapeutic efficacy`,
+              severity,
+              chain,
+              clinicalConsequence:
+                substrateEntry.prodrugNote
+                  ? `Antiplatelet/therapeutic efficacy COMPROMISED — ${substrateMed.name} cannot be activated. ${hasStentContext ? 'In post-DES/DAPT patients this is stent thrombosis risk. ' : ''}FDA Black Box Warning (clopidogrel + CYP2C19 inhibitors, 2010).`
+                  : `Antiplatelet/therapeutic efficacy COMPROMISED — ${substrateMed.name} cannot be activated by ${enzyme}. ${hasStentContext ? 'In post-DES/DAPT patients this is stent thrombosis risk. ' : ''}FDA Black Box Warning (clopidogrel + CYP2C19 inhibitors, 2010).`,
+              recommendation: `Switch ${inhibitorMed.name} to a non-${enzyme} alternative (e.g., for fluvoxamine/CYP2C19 → sertraline or escitalopram). Continue ${substrateMed.name} at current dose. Do NOT reduce ${substrateMed.name} — the problem is underactivation, not toxicity.`,
+              contributingDrugs: [inhibitorMed.normalized, substrateMed.normalized],
+            }
+          : {
+              finding: `${enzyme} INHIBITION CASCADE: ${inhibitorMed.name} → ↑${substrateMed.name} levels`,
+              severity,
+              chain,
+              clinicalConsequence: `Elevated ${substrateMed.name} plasma levels due to ${enzyme} inhibition by ${inhibitorMed.name}. Risk of ${substrateMed.name}-associated toxicity.`,
+              recommendation: `Monitor for ${substrateMed.name} toxicity. Consider reducing ${substrateMed.name} dose or switching to an alternative not metabolized by ${enzyme}.`,
+              contributingDrugs: [inhibitorMed.normalized, substrateMed.normalized],
+            };
 
         findings.push(finding);
       }
