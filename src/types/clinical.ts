@@ -12,6 +12,8 @@ export interface DrugKBEntry {
   drug: string;
   rxnormCui: string;
   cypRelationships: CYPRelationship[];
+  prodrug?: boolean;
+  prodrugNote?: string;
 }
 
 export interface CascadeChainStep {
@@ -27,6 +29,7 @@ export interface CascadeFinding {
   clinicalConsequence: string;
   recommendation: string;
   faersSignal?: string;
+  contributingDrugs?: string[];
 }
 
 export interface DosingFinding {
