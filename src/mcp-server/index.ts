@@ -317,6 +317,8 @@ server.tool(
   }
 );
 
+const TOOL_LIST = 'analyze_cascade_interactions, check_organ_function_dosing, screen_deprescribing, analyze_pharmacodynamic_interactions, check_pharmacogenomics, check_lab_monitoring';
+
 async function main() {
   const geminiKey = process.env['GEMINI_API_KEY'];
   if (geminiKey) {
@@ -326,9 +328,24 @@ async function main() {
     console.error('[PolyPharmGuard] WARNING: GEMINI_API_KEY not set. Running in KB-only mode (no LLM reasoning).');
   }
 
+  // Default to stdio for backward compatibility with Claude Desktop / local dev.
+  // Set MCP_TRANSPORT=http for marketplace deployment (Prompt Opinion, etc.).
+  const transportMode = (process.env['MCP_TRANSPORT'] ?? 'stdio').toLowerCase();
+
+  if (transportMode === 'http' || transportMode === 'streamable-http') {
+    // Lazy import keeps stdio dev path free of HTTP server overhead.
+    const { startHttpTransport } = await import('./http-transport.js');
+    await startHttpTransport(server, {
+      serviceName: 'polypharmguard',
+      serviceVersion: '1.0.0',
+    });
+    console.error(`[PolyPharmGuard] Transport: streamable-http. Tools: ${TOOL_LIST}`);
+    return;
+  }
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('[PolyPharmGuard] MCP Server running on stdio. Tools: analyze_cascade_interactions, check_organ_function_dosing, screen_deprescribing, analyze_pharmacodynamic_interactions, check_pharmacogenomics, check_lab_monitoring');
+  console.error(`[PolyPharmGuard] MCP Server running on stdio. Tools: ${TOOL_LIST}`);
 }
 
 main().catch((err) => {
