@@ -43,10 +43,25 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ rev
         </Text>
         {review.riskScore && (
           <>
-            <Text style={styles.sectionHeader}>Risk Assessment</Text>
-            <Text style={{ fontSize: 10, marginBottom: 12 }}>
-              90-Day Adverse Event Risk: {review.riskScore.score}/100 ({review.riskScore.interpretation})
-              -- {(review.riskScore.probability90Day * 100).toFixed(0)}% probability of hospitalization
+            <Text style={styles.sectionHeader}>Composite Risk Index</Text>
+            <Text style={{ fontSize: 10, marginBottom: 4 }}>
+              Score: {review.riskScore.score}/100 ({review.riskScore.band ?? review.riskScore.interpretation})
+              {' '}&middot; method: {review.riskScore.method ?? 'composite_heuristic_v1'}
+            </Text>
+            {Array.isArray(review.riskScore.factors) && review.riskScore.factors.length > 0 && (
+              <View style={{ marginBottom: 8 }}>
+                {(review.riskScore.factors as { name: string; weight: number; evidence: string }[])
+                  .slice()
+                  .sort((a, b) => b.weight - a.weight)
+                  .map((f, i) => (
+                    <Text key={i} style={{ fontSize: 9, color: '#374151', marginBottom: 1 }}>
+                      +{f.weight}  {f.name}  -- {f.evidence}
+                    </Text>
+                  ))}
+              </View>
+            )}
+            <Text style={{ fontSize: 8, color: '#6b7280', marginBottom: 12, fontStyle: 'italic' }}>
+              {review.riskScore.disclaimer ?? 'Heuristic composite; not a validated clinical risk model. For research/demo use.'}
             </Text>
           </>
         )}

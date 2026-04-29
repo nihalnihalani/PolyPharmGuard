@@ -52,7 +52,14 @@ export default async function ReviewPage({ params }: { params: Promise<{ patient
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-1">
           {riskScore ? (
-            <RiskScoreGauge score={riskScore.score} probability={riskScore.probability90Day} interpretation={riskScore.interpretation} />
+            <RiskScoreGauge
+              score={riskScore.score}
+              interpretation={riskScore.interpretation}
+              band={riskScore.band}
+              factors={riskScore.factors}
+              method={riskScore.method}
+              disclaimer={riskScore.disclaimer}
+            />
           ) : (
             <div className="rounded-xl border border-gray-800 p-6 text-center text-gray-500">Risk scoring unavailable</div>
           )}

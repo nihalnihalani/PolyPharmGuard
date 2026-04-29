@@ -81,25 +81,33 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
     // Audit logging failure should not block the review
   }
 
-  // Fetch risk score from ML service (if available)
+  // Fetch composite risk index from the heuristic service (if available).
+  // This is a transparent additive composite, NOT an ML model — see ml-service/scorer.py.
   let riskScore = null;
   try {
-    const mlResponse = await fetch('http://localhost:8001/score', {
+    const conditionLabels = (patientData.conditions ?? [])
+      .map((c: { code?: { text?: string; coding?: { display?: string }[] } }) =>
+        c.code?.text ?? c.code?.coding?.[0]?.display ?? ''
+      )
+      .filter((s: string) => s.length > 0);
+    const mlResponse = await fetch('http://localhost:8001/risk-score', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         age: patientAge,
         egfr: recentLabs.find(o => o.loincCode === '33914-3')?.value ?? 90,
+        egfr_loinc: '33914-3',
         medications,
-        cyp_interactions: cascade.filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH').length,
+        cyp_findings: cascade.map(f => ({ severity: f.severity, finding: f.finding })),
         pd_risk_score: pd.reduce((s, f) => s + (f.riskScore ?? 0), 0),
         beers_count: deprescribing.filter(f => f.beersFlag).length,
         lab_gaps: labMonitoring.filter(f => f.status !== 'CURRENT').length,
+        conditions: conditionLabels,
       }),
     });
     if (mlResponse.ok) riskScore = await mlResponse.json();
   } catch {
-    // ML service not running — continue without score
+    // Risk service not running — continue without score
   }
 
   return NextResponse.json({
