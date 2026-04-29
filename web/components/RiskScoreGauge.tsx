@@ -9,11 +9,6 @@ export interface RiskFactor {
 
 interface RiskScoreGaugeProps {
   score: number;                       // 0-100
-  /**
-   * Legacy prop. Now treated as a normalized composite index (score / 100),
-   * not a probability. Kept for backward compatibility with the review page.
-   */
-  probability?: number;
   /** Backward-compat band label (CAPS). Falls back to deriving from score. */
   interpretation?: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
   /** Title-case band returned by composite_heuristic_v1 (Low/Moderate/High/Critical). */

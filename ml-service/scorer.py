@@ -35,6 +35,23 @@ WEIGHT_LAB_GAP_PER_HIT = 5
 WEIGHT_LAB_GAP_CAP = 15
 WEIGHT_ANTICHOLINERGIC_BURDEN = 10
 WEIGHT_FALL_HISTORY = 10
+# Prodrug activation failure: a strong CYP inhibitor blocks bioactivation of a
+# prodrug (e.g. fluvoxamine + clopidogrel via CYP2C19; CYP2D6 inhibitor +
+# codeine/tramadol). Loss of active metabolite -> loss of therapeutic effect.
+# Source: FDA Drug Development and Drug Interactions tables; CPIC CYP2C19 +
+# clopidogrel guideline (Lee 2022).
+WEIGHT_PRODRUG_FAILURE_PER_HIT = 20
+WEIGHT_PRODRUG_FAILURE_CAP = 30
+# Residual inhibitor window: a recently-completed strong CYP inhibitor course
+# (Paxlovid/ritonavir, fluconazole) where mechanism-based inhibition persists
+# beyond drug clearance. Source: FDA Paxlovid label - ritonavir CYP3A4
+# inhibition persists ~3-4 days after the last dose.
+WEIGHT_RESIDUAL_INHIBITOR_WINDOW = 10
+# DAPT at risk: dual antiplatelet therapy in a post-DES/PCI patient where any
+# concurrent factor compromises antiplatelet efficacy (e.g. clopidogrel
+# bioactivation blocked, ticagrelor metabolism altered). Source: 2021
+# ACC/AHA/SCAI Guideline for Coronary Artery Revascularization.
+WEIGHT_DAPT_AT_RISK = 15
 
 SCORE_MAX = 100
 
@@ -162,6 +179,9 @@ def compute_risk_score(payload: dict) -> dict:
     lab_gaps = int(payload.get("lab_gaps", 0) or 0)
     conditions = payload.get("conditions") or []
     egfr_loinc = payload.get("egfr_loinc", "33914-3")
+    prodrug_failures = int(payload.get("prodrug_failures", 0) or 0)
+    residual_inhibitor_window = bool(payload.get("residual_inhibitor_window", False))
+    dapt_at_risk = bool(payload.get("dapt_at_risk", False))
 
     # --- Renal (eGFR) ----------------------------------------------------
     if egfr < 30:
@@ -296,6 +316,61 @@ def compute_risk_score(payload: dict) -> dict:
             }
         )
 
+    # --- Prodrug activation failure --------------------------------------
+    # Fires when a strong CYP inhibitor blocks bioactivation of a co-prescribed
+    # prodrug (clopidogrel via CYP2C19, codeine/tramadol via CYP2D6). The
+    # patient receives drug but no active metabolite -> therapeutic failure.
+    if prodrug_failures > 0:
+        prodrug_weight = min(
+            prodrug_failures * WEIGHT_PRODRUG_FAILURE_PER_HIT,
+            WEIGHT_PRODRUG_FAILURE_CAP,
+        )
+        factors.append(
+            {
+                "name": f"Prodrug activation failure x{prodrug_failures}",
+                "weight": prodrug_weight,
+                "evidence": (
+                    "analyze_cascade_interactions tool - strong CYP inhibitor "
+                    "blocking prodrug bioactivation (loss of therapeutic effect)"
+                ),
+                "category": "pharmacokinetic",
+            }
+        )
+
+    # --- Residual inhibitor window --------------------------------------
+    # Fires when a recently-completed mechanism-based CYP inhibitor (Paxlovid
+    # ritonavir, fluconazole) is still suppressing CYP enzymes despite the
+    # drug having been stopped. Compounds risk for concurrent CYP substrates.
+    if residual_inhibitor_window:
+        factors.append(
+            {
+                "name": "Residual CYP3A4 inhibitor window",
+                "weight": WEIGHT_RESIDUAL_INHIBITOR_WINDOW,
+                "evidence": (
+                    "Recently completed mechanism-based CYP3A4 inhibitor "
+                    "(e.g. Paxlovid/ritonavir within ~5 days)"
+                ),
+                "category": "pharmacokinetic",
+            }
+        )
+
+    # --- DAPT at risk ----------------------------------------------------
+    # Fires for post-DES/PCI patients on dual antiplatelet therapy when any
+    # other factor compromises antiplatelet efficacy (e.g. clopidogrel CYP2C19
+    # bioactivation blocked). Stent thrombosis risk.
+    if dapt_at_risk:
+        factors.append(
+            {
+                "name": "DAPT at risk",
+                "weight": WEIGHT_DAPT_AT_RISK,
+                "evidence": (
+                    "Dual antiplatelet therapy in post-DES/PCI patient with "
+                    "factor compromising antiplatelet efficacy"
+                ),
+                "category": "high_risk_drug_class",
+            }
+        )
+
     # --- Aggregate -------------------------------------------------------
     raw_score = sum(int(f["weight"]) for f in factors)
     score = min(raw_score, SCORE_MAX)
@@ -307,9 +382,6 @@ def compute_risk_score(payload: dict) -> dict:
         "capped": capped,
         "band": _band(score),
         "interpretation": _interpretation(score),  # backward compat for UI
-        # Backward-compatible field used by existing UI/PDF text ("X% probability...").
-        # We label this as a normalized index, NOT an estimated probability.
-        "probability90Day": round(score / 100.0, 3),
         "factors": factors,
         "method": METHOD_VERSION,
         "disclaimer": DISCLAIMER,

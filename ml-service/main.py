@@ -35,6 +35,12 @@ class ScoreRequest(BaseModel):
     lab_gaps: Optional[int] = 0
     conditions: Optional[list[Any]] = None  # for fall-history detection
     anticoagulant_evidence: Optional[str] = None  # optional override
+    # Prodrug activation failure count (e.g. fluvoxamine + clopidogrel; see scorer.py).
+    prodrug_failures: Optional[int] = 0
+    # Recently-completed mechanism-based CYP inhibitor (Paxlovid/ritonavir within ~5d).
+    residual_inhibitor_window: Optional[bool] = False
+    # Post-DES/PCI patient on DAPT with concurrent factor compromising efficacy.
+    dapt_at_risk: Optional[bool] = False
 
 
 def _serialize(req: ScoreRequest) -> dict:

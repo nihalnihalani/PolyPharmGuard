@@ -103,6 +103,59 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
         c.code?.text ?? c.code?.coding?.[0]?.display ?? ''
       )
       .filter((s: string) => s.length > 0);
+
+    // --- Derive new clinically defensible factor inputs --------------------
+    // Prodrug activation failure: cascade findings whose text reflects loss of
+    // active metabolite. Cascade tool emits "REDUCED active metabolite" or
+    // "prodrug bioactivation" wording when an inhibitor blocks a prodrug
+    // substrate (e.g. fluvoxamine + clopidogrel via CYP2C19).
+    const prodrugFailures = cascade.filter(f => {
+      const haystack = `${f.finding ?? ''} ${f.clinicalConsequence ?? ''}`.toLowerCase();
+      return (
+        haystack.includes('reduced active metabolite') ||
+        haystack.includes('prodrug')
+      );
+    }).length;
+
+    // Residual inhibitor window: any MedicationRequest with Paxlovid /
+    // nirmatrelvir / ritonavir whose status is "completed" and authoredOn is
+    // within the last 5 days. Mechanism-based CYP3A4 inhibition persists ~3-4
+    // days after the last dose (FDA Paxlovid label).
+    const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const residualInhibitorWindow = (patientData.medications ?? []).some(m => {
+      const text = (m.medicationCodeableConcept?.text ?? '').toLowerCase();
+      const isStrongCypMechanismInhibitor =
+        text.includes('paxlovid') ||
+        text.includes('ritonavir') ||
+        text.includes('nirmatrelvir');
+      if (!isStrongCypMechanismInhibitor) return false;
+      if (m.status !== 'completed') return false;
+      const authoredOn = m.authoredOn ? new Date(m.authoredOn).getTime() : NaN;
+      if (Number.isNaN(authoredOn)) return false;
+      // Treat authoredOn as proxy for course start; courses are ~5 days, and
+      // residual inhibition extends another ~3-4 days. So flag if authored
+      // within the last ~10 days.
+      const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
+      return now - authoredOn <= TEN_DAYS_MS;
+    });
+
+    // DAPT at risk: stent / DES / PCI in conditions AND clopidogrel /
+    // ticagrelor / prasugrel in meds AND at least one prodrug failure flagged
+    // by the cascade tool (i.e. antiplatelet bioactivation compromised).
+    const conditionsBlob = conditionLabels.join(' ').toLowerCase();
+    const hasStentContext =
+      conditionsBlob.includes('stent') ||
+      conditionsBlob.includes('des') ||
+      conditionsBlob.includes('pci') ||
+      conditionsBlob.includes('coronary');
+    const medsBlob = medications.join(' ').toLowerCase();
+    const onP2y12Prodrug =
+      medsBlob.includes('clopidogrel') ||
+      medsBlob.includes('ticagrelor') ||
+      medsBlob.includes('prasugrel');
+    const daptAtRisk = hasStentContext && onP2y12Prodrug && prodrugFailures > 0;
+
     const mlResponse = await fetch('http://localhost:8001/risk-score', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -116,6 +169,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
         beers_count: deprescribing.filter(f => f.beersFlag).length,
         lab_gaps: labMonitoring.filter(f => f.status !== 'CURRENT').length,
         conditions: conditionLabels,
+        prodrug_failures: prodrugFailures,
+        residual_inhibitor_window: residualInhibitorWindow,
+        dapt_at_risk: daptAtRisk,
       }),
     });
     if (mlResponse.ok) riskScore = await mlResponse.json();

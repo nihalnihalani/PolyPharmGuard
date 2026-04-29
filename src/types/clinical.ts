@@ -178,10 +178,9 @@ export interface LabMonitoringFinding {
   source: string;
 }
 
-// Risk score type (returned by ML service)
+// Risk score type (returned by ML service composite_heuristic_v1)
 export interface RiskScore {
   score: number;           // 0-100
-  probability90Day: number; // 0.0-1.0
   features: Record<string, number>;
   interpretation: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 }
