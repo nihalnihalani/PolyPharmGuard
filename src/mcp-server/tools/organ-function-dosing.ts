@@ -58,6 +58,80 @@ function matchDrugToDosingKB<T extends { drug: string }>(name: string, kb: T[]):
   );
 }
 
+/**
+ * Assess hepatic dysfunction. Returns proper Child-Pugh A/B/C only when ALL 5
+ * components (bilirubin, albumin, INR, ascites, encephalopathy) are available.
+ *
+ * When components are missing, falls back to a "Hepatic Risk Indicator" based on
+ * available transaminases/bilirubin and returns an explicit disclaimer that the
+ * surrogate is NOT a true Child-Pugh score.
+ *
+ * Real Child-Pugh component thresholds (1/2/3 points each):
+ *   - Bilirubin (mg/dL): <2 / 2-3 / >3
+ *   - Albumin (g/dL):    >3.5 / 2.8-3.5 / <2.8
+ *   - INR:               <1.7 / 1.7-2.3 / >2.3
+ *   - Ascites:           none / mild / moderate-severe
+ *   - Encephalopathy:    none / grade 1-2 / grade 3-4
+ * Total: A = 5-6, B = 7-9, C = 10-15
+ */
+function assessHepaticRisk(ctx: PatientContext): {
+  category: 'A' | 'B' | 'C' | null;
+  label: string;
+  basis: string;
+  disclaimer?: string;
+} {
+  const haveAllChildPugh =
+    ctx.bilirubin !== undefined &&
+    ctx.albumin !== undefined &&
+    ctx.inr !== undefined &&
+    ctx.ascites !== undefined &&
+    ctx.encephalopathy !== undefined;
+
+  if (haveAllChildPugh) {
+    // Real Child-Pugh
+    const bilirubin = ctx.bilirubin!;
+    const albumin = ctx.albumin!;
+    const inr = ctx.inr!;
+    const ascites = ctx.ascites!;
+    const encephalopathy = ctx.encephalopathy!;
+
+    const bilirubinPts = bilirubin < 2 ? 1 : bilirubin <= 3 ? 2 : 3;
+    const albuminPts = albumin > 3.5 ? 1 : albumin >= 2.8 ? 2 : 3;
+    const inrPts = inr < 1.7 ? 1 : inr <= 2.3 ? 2 : 3;
+    const ascitesPts = ascites === 'none' ? 1 : ascites === 'mild' ? 2 : 3;
+    const encephPts = encephalopathy === 'none' ? 1 : encephalopathy === 'grade1-2' ? 2 : 3;
+
+    const total = bilirubinPts + albuminPts + inrPts + ascitesPts + encephPts;
+    const category: 'A' | 'B' | 'C' = total <= 6 ? 'A' : total <= 9 ? 'B' : 'C';
+    return {
+      category,
+      label: 'Child-Pugh',
+      basis: `score ${total}/15 (bilirubin ${bilirubin}, albumin ${albumin}, INR ${inr}, ascites ${ascites}, encephalopathy ${encephalopathy})`,
+    };
+  }
+
+  // Surrogate fallback — NOT a real Child-Pugh score. Signal this explicitly.
+  const alt = ctx.alt ?? 0;
+  const bilirubin = ctx.bilirubin ?? 0;
+
+  if (alt <= 120 && bilirubin <= 2.0) {
+    return { category: 'A', label: 'Hepatic Risk Indicator', basis: `ALT ${ctx.alt ?? 'n/a'}, bilirubin ${ctx.bilirubin ?? 'n/a'}`, disclaimer: 'surrogate — not Child-Pugh; albumin/INR/ascites/encephalopathy unavailable' };
+  }
+
+  // Map to A/B/C-like surrogate buckets so existing KB recommendations still apply
+  let surrogateCategory: 'A' | 'B' | 'C';
+  if (bilirubin > 3.0 || alt > 200) surrogateCategory = 'C';
+  else if (bilirubin > 2.0 || alt > 120) surrogateCategory = 'B';
+  else surrogateCategory = 'A';
+
+  return {
+    category: surrogateCategory,
+    label: 'Hepatic Risk Indicator',
+    basis: `ALT ${ctx.alt ?? 'n/a'}, bilirubin ${ctx.bilirubin ?? 'n/a'}`,
+    disclaimer: 'surrogate — not a true Child-Pugh score; full assessment requires albumin, INR, ascites grade, and encephalopathy grade',
+  };
+}
+
 function getApplicableAdjustment(
   entry: RenalDosingEntry,
   egfr: number
@@ -118,20 +192,18 @@ function detectAlgorithmicDosingIssues(
     if (patientContext.alt !== undefined || patientContext.ast !== undefined || patientContext.bilirubin !== undefined) {
       const hepaticEntry = matchDrugToDosingKB(med, hepaticDosing);
       if (hepaticEntry) {
-        // Simple heuristic: ALT > 3x ULN (>120) or bilirubin > 2x ULN (>2.0) suggests significant hepatic impairment
-        const alt = patientContext.alt ?? 0;
-        const bilirubin = patientContext.bilirubin ?? 0;
+        const hepaticAssessment = assessHepaticRisk(patientContext);
 
-        if (alt > 120 || bilirubin > 2.0) {
-          const childPughCategory = bilirubin > 3.0 || alt > 200 ? 'C' : bilirubin > 2.0 || alt > 120 ? 'B' : 'A';
-          const hepaticRec = hepaticEntry.childPughCategories.find(c => c.category === childPughCategory);
+        // Only flag if assessment indicates B or C (any meaningful impairment)
+        if (hepaticAssessment.category && hepaticAssessment.category !== 'A') {
+          const hepaticRec = hepaticEntry.childPughCategories.find(c => c.category === hepaticAssessment.category);
 
           if (hepaticRec && !hepaticRec.recommendation.startsWith('Standard') && !hepaticRec.recommendation.startsWith('No significant')) {
             findings.push({
-              finding: `HEPATIC DOSE ALERT: ${med} may require adjustment given elevated liver enzymes`,
+              finding: `HEPATIC DOSE ALERT: ${med} may require adjustment — ${hepaticAssessment.label} ${hepaticAssessment.category}`,
               severity: hepaticEntry.contraindicated ? 'HIGH' : 'MODERATE',
               medication: med,
-              threshold: `Child-Pugh ${childPughCategory} (ALT: ${patientContext.alt}, Bilirubin: ${patientContext.bilirubin})`,
+              threshold: `${hepaticAssessment.label} ${hepaticAssessment.category} — ${hepaticAssessment.basis}${hepaticAssessment.disclaimer ? ' (' + hepaticAssessment.disclaimer + ')' : ''}`,
               recommendation: hepaticRec.recommendation,
             });
           }

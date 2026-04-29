@@ -120,7 +120,7 @@
   },
   {
     "drug": "phenytoin",
-    "rxnormCui": "8123",
+    "rxnormCui": "8183",
     "requiredLabs": [
       {
         "labName": "Phenytoin level (free)",

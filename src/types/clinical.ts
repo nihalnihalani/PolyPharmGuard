@@ -67,6 +67,13 @@ export interface PatientContext {
   alt?: number;
   ast?: number;
   bilirubin?: number;
+  // Additional Child-Pugh inputs — when present, enable proper Child-Pugh scoring.
+  // When absent, hepatic dosing falls back to a surrogate "Hepatic Risk Indicator"
+  // (bilirubin + transaminase based) with explicit disclaimer.
+  albumin?: number;            // g/dL
+  inr?: number;                // International Normalized Ratio
+  ascites?: 'none' | 'mild' | 'moderate-severe';
+  encephalopathy?: 'none' | 'grade1-2' | 'grade3-4';
 }
 
 export interface RiskMatrixRow {

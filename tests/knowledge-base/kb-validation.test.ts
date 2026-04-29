@@ -187,5 +187,139 @@ describe('Knowledge Base Validation', () => {
       );
       expect(ppiEntry).toBeDefined();
     });
+
+    it('has at least 20 entries (STOPPFrail v2 expansion)', () => {
+      const content = readFileSync(join(KB_DIR, 'stoppfrail.json'), 'utf-8');
+      const data = JSON.parse(content);
+      expect(data.length).toBeGreaterThanOrEqual(20);
+    });
+
+    it('every entry cites a source', () => {
+      const content = readFileSync(join(KB_DIR, 'stoppfrail.json'), 'utf-8');
+      const data = JSON.parse(content);
+      for (const entry of data) {
+        expect(entry.source, `STOPPFrail entry ${entry.criterion} missing source`).toBeTruthy();
+      }
+    });
+  });
+
+  describe('Cross-KB validation', () => {
+    const KB_FILES = [
+      'cyp450/substrates.json',
+      'cyp450/inhibitors.json',
+      'cyp450/inducers.json',
+      'lab-monitoring.json',
+      'pharmacogenomics.json',
+      'renal-hepatic/renal-dosing.json',
+      'renal-hepatic/hepatic-dosing.json',
+    ];
+
+    it('no RxNorm CUI maps to more than one drug name across all KB files', () => {
+      const cuiToDrugs: Record<string, Set<string>> = {};
+      for (const f of KB_FILES) {
+        const content = readFileSync(join(KB_DIR, f), 'utf-8');
+        const data = JSON.parse(content);
+        for (const entry of data) {
+          const cui = entry.rxnormCui;
+          const drug = (entry.drug || '').toLowerCase();
+          if (!cui || cui === '0') continue;
+          if (!cuiToDrugs[cui]) cuiToDrugs[cui] = new Set();
+          cuiToDrugs[cui].add(drug);
+        }
+      }
+      const collisions: string[] = [];
+      for (const [cui, drugs] of Object.entries(cuiToDrugs)) {
+        if (drugs.size > 1) collisions.push(`CUI ${cui} -> ${[...drugs].join(', ')}`);
+      }
+      expect(collisions, `CUI collisions found:\n${collisions.join('\n')}`).toEqual([]);
+    });
+
+    it('phenytoin uses CUI 8183 consistently across KB files', () => {
+      const sub = JSON.parse(readFileSync(join(KB_DIR, 'cyp450/substrates.json'), 'utf-8'));
+      const lab = JSON.parse(readFileSync(join(KB_DIR, 'lab-monitoring.json'), 'utf-8'));
+      const ind = JSON.parse(readFileSync(join(KB_DIR, 'cyp450/inducers.json'), 'utf-8'));
+
+      const subPhenytoin = sub.find((e: any) => e.drug === 'phenytoin');
+      const labPhenytoin = lab.find((e: any) => e.drug === 'phenytoin');
+      const indPhenytoin = ind.find((e: any) => e.drug === 'phenytoin');
+
+      expect(subPhenytoin?.rxnormCui).toBe('8183');
+      expect(labPhenytoin?.rxnormCui).toBe('8183');
+      expect(indPhenytoin?.rxnormCui).toBe('8183');
+    });
+
+    it('ropinirole and risperidone have distinct CUIs', () => {
+      const sub = JSON.parse(readFileSync(join(KB_DIR, 'cyp450/substrates.json'), 'utf-8'));
+      const ropinirole = sub.find((e: any) => e.drug === 'ropinirole');
+      const risperidone = sub.find((e: any) => e.drug === 'risperidone');
+      expect(ropinirole?.rxnormCui).toBe('35828');
+      expect(risperidone?.rxnormCui).toBe('35636');
+    });
+  });
+
+  describe('Beers Criteria expansion', () => {
+    it('has at least 50 entries (AGS 2023 expansion)', () => {
+      const content = readFileSync(join(KB_DIR, 'beers-criteria.json'), 'utf-8');
+      const data = JSON.parse(content);
+      expect(data.length).toBeGreaterThanOrEqual(50);
+    });
+
+    it('every Beers entry cites a source', () => {
+      const content = readFileSync(join(KB_DIR, 'beers-criteria.json'), 'utf-8');
+      const data = JSON.parse(content);
+      for (const entry of data) {
+        expect(entry.source, `Beers entry for ${entry.drug} missing source`).toBeTruthy();
+        expect(entry.source.toLowerCase()).toMatch(/ags|beers/);
+      }
+    });
+
+    it('covers the key high-value drug classes', () => {
+      const content = readFileSync(join(KB_DIR, 'beers-criteria.json'), 'utf-8');
+      const data = JSON.parse(content);
+      const allDrugs = new Set(data.map((e: any) => e.drug.toLowerCase()));
+      const allClasses = data.map((e: any) => (e.drugClass || '').toLowerCase()).join(' ');
+
+      // Required high-value drugs from acceptance criteria
+      expect(allDrugs.has('glyburide') || allDrugs.has('glibenclamide')).toBe(true);
+      expect(allDrugs.has('digoxin') || allClasses.includes('cardiac glycoside')).toBe(true);
+      expect(allDrugs.has('diphenhydramine')).toBe(true);
+      expect(allDrugs.has('oxybutynin')).toBe(true);
+      expect(allDrugs.has('cyclobenzaprine')).toBe(true);
+      expect(allDrugs.has('megestrol')).toBe(true);
+      expect(allDrugs.has('nitrofurantoin')).toBe(true);
+      expect(allDrugs.has('meperidine')).toBe(true);
+      expect(allClasses).toContain('benzodiazepine');
+      expect(allClasses).toContain('z-drug');
+      expect(allClasses).toContain('tricyclic');
+      expect(allClasses).toContain('nsaid');
+    });
+  });
+
+  describe('Pharmacogenomics + Inhibitor cross-reference (Mr. Patel scenario)', () => {
+    it('clopidogrel is flagged as a CYP2C19 prodrug substrate', () => {
+      const sub = JSON.parse(readFileSync(join(KB_DIR, 'cyp450/substrates.json'), 'utf-8'));
+      const clopidogrel = sub.find((e: any) => e.drug === 'clopidogrel');
+      expect(clopidogrel).toBeDefined();
+      const cyp2c19Rel = clopidogrel.cypRelationships.find((r: any) => r.enzyme === 'CYP2C19');
+      expect(cyp2c19Rel).toBeDefined();
+      // Prodrug flag enables cascade tool to reason about loss-of-efficacy direction
+      expect(clopidogrel.prodrug).toBe(true);
+    });
+
+    it('fluvoxamine is a strong CYP2C19 inhibitor (would block clopidogrel activation)', () => {
+      const inh = JSON.parse(readFileSync(join(KB_DIR, 'cyp450/inhibitors.json'), 'utf-8'));
+      const fluvoxamine = inh.find((e: any) => e.drug === 'fluvoxamine');
+      expect(fluvoxamine).toBeDefined();
+      const cyp2c19 = fluvoxamine.inhibitions.find((i: any) => i.enzyme === 'CYP2C19');
+      expect(cyp2c19).toBeDefined();
+      expect(cyp2c19.strength).toContain('strong');
+    });
+
+    it('pharmacogenomics KB documents clopidogrel-CYP2C19 prodrug relationship', () => {
+      const pgx = JSON.parse(readFileSync(join(KB_DIR, 'pharmacogenomics.json'), 'utf-8'));
+      const clopidogrelEntry = pgx.find((e: any) => e.drug === 'clopidogrel' && e.gene === 'CYP2C19');
+      expect(clopidogrelEntry).toBeDefined();
+      expect(clopidogrelEntry.consequence.toLowerCase()).toContain('prodrug');
+    });
   });
 });
