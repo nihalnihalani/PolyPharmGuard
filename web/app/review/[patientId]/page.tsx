@@ -99,14 +99,70 @@ export default async function ReviewPage({ params }: { params: Promise<{ patient
           )}
         </div>
         <div className="col-span-2">
-          <MedicationRiskMatrix rows={medications.slice(0, 8).map((med: string) => ({
-            medication: med,
-            cascadeRisk: (findings.cascade ?? []).some((f: { finding: string; severity: string }) => f.finding.includes(med.split(' ')[0]) && f.severity !== 'LOW') ? 'HIGH' as const : 'OK' as const,
-            pdRisk: (findings.pd ?? []).some((f: { contributingDrugs?: string[] }) => f.contributingDrugs?.some((d: string) => d.toLowerCase().includes(med.toLowerCase().split(' ')[0]))) ? 'MODERATE' as const : 'OK' as const,
-            renalRisk: (findings.dosing ?? []).some((f: { medication?: string; severity: string }) => f.medication?.includes(med.split(' ')[0])) ? 'HIGH' as const : 'OK' as const,
-            beersFlag: (findings.deprescribing ?? []).some((f: { medication?: string; beersFlag?: boolean }) => f.medication?.includes(med.split(' ')[0]) && f.beersFlag),
-            labGap: (findings.labMonitoring ?? []).some((f: { drug?: string }) => f.drug?.toLowerCase().includes(med.toLowerCase().split(' ')[0])),
-          }))} />
+          {/* Render every medication, not just first 8 — clinicians need to
+              see the full risk picture, especially for polypharmacy patients.
+              Also surface tool-specific severity per cell so PGx, hepatic,
+              lab-monitoring, and STOPPFrail signals aren't collapsed away. */}
+          <MedicationRiskMatrix rows={(medications as string[]).map((med: string) => {
+            const stem = med.toLowerCase().split(' ')[0];
+            const matchByMedicationField = (f: { medication?: string }) =>
+              !!f.medication && f.medication.toLowerCase().includes(stem);
+            const findingSeverityFor = <T extends { severity: string },>(
+              arr: T[] | undefined,
+              matcher: (f: T) => boolean
+            ): 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' | 'OK' => {
+              const matches = (arr ?? []).filter(matcher);
+              if (matches.length === 0) return 'OK';
+              const sevRank: Record<string, number> = { CRITICAL: 0, HIGH: 1, MODERATE: 2, LOW: 3, INFO: 4 };
+              const top = matches.sort((a, b) => (sevRank[a.severity] ?? 9) - (sevRank[b.severity] ?? 9))[0];
+              return (top.severity as 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW') ?? 'OK';
+            };
+
+            const dosingMatches = (findings.dosing ?? []).filter(matchByMedicationField);
+            const renalDosing = dosingMatches.filter((f: { finding?: string }) =>
+              !!f.finding && f.finding.toUpperCase().includes('RENAL')
+            );
+            const hepaticDosing = dosingMatches.filter((f: { finding?: string }) =>
+              !!f.finding && f.finding.toUpperCase().includes('HEPATIC')
+            );
+
+            return {
+              medication: med,
+              cascadeRisk: findingSeverityFor(
+                findings.cascade as { severity: string; finding: string }[] | undefined,
+                (f: { severity: string; finding: string }) => f.finding.toLowerCase().includes(stem) && f.severity !== 'LOW'
+              ),
+              pdRisk: findingSeverityFor(
+                findings.pd as { severity: string; contributingDrugs?: string[] }[] | undefined,
+                (f: { severity: string; contributingDrugs?: string[] }) =>
+                  !!f.contributingDrugs?.some((d: string) => d.toLowerCase().includes(stem))
+              ),
+              renalRisk: findingSeverityFor(
+                renalDosing as { severity: string; medication?: string }[],
+                () => true
+              ),
+              hepaticRisk: findingSeverityFor(
+                hepaticDosing as { severity: string; medication?: string }[],
+                () => true
+              ),
+              pgxRisk: findingSeverityFor(
+                findings.pharmacogenomics as { severity: string; drug?: string }[] | undefined,
+                (f: { severity: string; drug?: string }) =>
+                  !!f.drug && f.drug.toLowerCase().includes(stem)
+              ),
+              beersFlag: (findings.deprescribing ?? []).some(
+                (f: { medication?: string; beersFlag?: string | boolean }) =>
+                  !!f.medication && f.medication.toLowerCase().includes(stem) && !!f.beersFlag
+              ),
+              stoppfrailFlag: (findings.deprescribing ?? []).some(
+                (f: { medication?: string; stoppfrailFlag?: string | boolean }) =>
+                  !!f.medication && f.medication.toLowerCase().includes(stem) && !!f.stoppfrailFlag
+              ),
+              labGap: (findings.labMonitoring ?? []).some(
+                (f: { drug?: string }) => !!f.drug && f.drug.toLowerCase().includes(stem)
+              ),
+            };
+          })} />
         </div>
       </div>
 

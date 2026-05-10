@@ -5,7 +5,10 @@ interface MatrixRow {
   cascadeRisk: SeverityOrOk;
   pdRisk: SeverityOrOk;
   renalRisk: SeverityOrOk;
+  hepaticRisk?: SeverityOrOk;
+  pgxRisk?: SeverityOrOk;
   beersFlag: boolean;
+  stoppfrailFlag?: boolean;
   labGap: boolean;
 }
 
@@ -43,7 +46,10 @@ export function MedicationRiskMatrix({ rows }: { rows: MatrixRow[] }) {
             <th className="px-3 py-3 text-center text-gray-400 font-medium">CYP Cascade</th>
             <th className="px-3 py-3 text-center text-gray-400 font-medium">PD Risk</th>
             <th className="px-3 py-3 text-center text-gray-400 font-medium">Renal</th>
+            <th className="px-3 py-3 text-center text-gray-400 font-medium">Hepatic</th>
+            <th className="px-3 py-3 text-center text-gray-400 font-medium">PGx</th>
             <th className="px-3 py-3 text-center text-gray-400 font-medium">Beers</th>
+            <th className="px-3 py-3 text-center text-gray-400 font-medium">STOPPFrail</th>
             <th className="px-3 py-3 text-center text-gray-400 font-medium">Lab Gap</th>
           </tr>
         </thead>
@@ -54,7 +60,10 @@ export function MedicationRiskMatrix({ rows }: { rows: MatrixRow[] }) {
               <Cell value={row.cascadeRisk} />
               <Cell value={row.pdRisk} />
               <Cell value={row.renalRisk} />
+              <Cell value={row.hepaticRisk ?? 'OK'} />
+              <Cell value={row.pgxRisk ?? 'OK'} />
               <Cell value={row.beersFlag} />
+              <Cell value={row.stoppfrailFlag ?? false} />
               <Cell value={row.labGap} />
             </tr>
           ))}
