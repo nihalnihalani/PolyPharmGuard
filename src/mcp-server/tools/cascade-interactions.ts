@@ -24,6 +24,17 @@ interface InducerEntry {
   inductions: Array<{ enzyme: string; strength: string; source: string }>;
 }
 
+interface RenalDosingEntry {
+  drug: string;
+  rxnormCui: string;
+  adjustments: Array<{
+    egfrRange: { min: number | null; max: number | null };
+    recommendation: string;
+    contraindicated: boolean;
+    source: string;
+  }>;
+}
+
 function loadKB() {
   const substrates: DrugKBEntry[] = JSON.parse(
     readFileSync(join(KB_DIR, 'cyp450/substrates.json'), 'utf-8')
@@ -34,7 +45,37 @@ function loadKB() {
   const inducers: InducerEntry[] = JSON.parse(
     readFileSync(join(KB_DIR, 'cyp450/inducers.json'), 'utf-8')
   );
-  return { substrates, inhibitors, inducers };
+  const renalDosing: RenalDosingEntry[] = JSON.parse(
+    readFileSync(join(KB_DIR, 'renal-hepatic/renal-dosing.json'), 'utf-8')
+  );
+  return { substrates, inhibitors, inducers, renalDosing };
+}
+
+// Returns true only when the substrate is renally cleared enough that severe
+// CKD would meaningfully amplify accumulation. We use the renal-dosing KB as
+// ground truth: if any adjustment for eGFR ≤30 is contraindicated or carries
+// a real recommendation (not a "no adjustment / hepatically metabolized"
+// no-op), we treat the substrate as renally cleared.
+function substrateHasRenalClearance(
+  substrateName: string,
+  renalDosing: RenalDosingEntry[]
+): boolean {
+  const normalized = substrateName.toLowerCase();
+  const entry = renalDosing.find(e =>
+    normalized.startsWith(e.drug.toLowerCase()) || e.drug.toLowerCase().startsWith(normalized)
+  );
+  if (!entry) return false;
+  return entry.adjustments.some(adj => {
+    const min = adj.egfrRange.min ?? 0;
+    const appliesAtSevere = min <= 30;
+    if (!appliesAtSevere) return false;
+    if (adj.contraindicated) return true;
+    const rec = adj.recommendation.toLowerCase();
+    if (rec.startsWith('no renal') || rec.startsWith('no dose adjustment') || rec.startsWith('standard dosing')) {
+      return false;
+    }
+    return true;
+  });
 }
 
 function normalizeDrugName(name: string): string {
@@ -58,6 +99,7 @@ function detectAlgorithmicCascades(
   substrates: DrugKBEntry[],
   inhibitors: InhibitorEntry[],
   inducers: InducerEntry[],
+  renalDosing: RenalDosingEntry[],
   patientContext: PatientContext | null
 ): CascadeFinding[] {
   const findings: CascadeFinding[] = [];
@@ -125,9 +167,14 @@ function detectAlgorithmicCascades(
         const hasStentContext = /stent|\bdes\b|drug.eluting|pci|percutaneous coronary/.test(conditionsBlob);
 
         // Determine severity
-        // Severe renal impairment (eGFR < 30) escalates any inhibition by one tier —
-        // the kidney can no longer compensate for increased plasma drug levels.
-        const severeRenal = patientContext?.egfr !== undefined && patientContext.egfr < 30;
+        // Severe renal impairment (eGFR < 30) escalates inhibition by one tier
+        // ONLY when the substrate is actually renally cleared. Escalating
+        // hepatically-metabolized substrates (e.g. omeprazole, simvastatin)
+        // produces clinically false CRITICAL findings.
+        const severeRenal =
+          patientContext?.egfr !== undefined &&
+          patientContext.egfr < 30 &&
+          substrateHasRenalClearance(substrateMed.normalized, renalDosing);
         let severity: CascadeFinding['severity'] = 'LOW';
         if (isStrongInhibitor && isMajorSubstrate) {
           severity = severeRenal ? 'CRITICAL' : 'HIGH';
@@ -180,11 +227,15 @@ function detectAlgorithmicCascades(
               },
             ];
 
-        if (patientContext?.egfr !== undefined && patientContext.egfr < 30) {
+        if (
+          patientContext?.egfr !== undefined &&
+          patientContext.egfr < 30 &&
+          substrateHasRenalClearance(substrateMed.normalized, renalDosing)
+        ) {
           chain.push({
             step: 4,
-            fact: `Patient eGFR of ${patientContext.egfr} mL/min indicates CKD Stage 4, further impairing ${substrateMed.name} clearance and amplifying accumulation risk`,
-            source: 'FHIR Observation (eGFR)',
+            fact: `Patient eGFR of ${patientContext.egfr} mL/min indicates CKD Stage 4; ${substrateMed.name} has documented renal clearance per FDA labeling, so reduced GFR amplifies accumulation risk on top of the CYP inhibition above`,
+            source: 'FHIR Observation (eGFR) + FDA renal dosing label',
           });
         }
 
@@ -239,7 +290,7 @@ export async function analyzeCascadeInteractions(input: {
   }
 
   // Load KB
-  const { substrates, inhibitors, inducers } = loadKB();
+  const { substrates, inhibitors, inducers, renalDosing } = loadKB();
 
   // Match meds to KB
   const kbMatches = medications
@@ -251,7 +302,7 @@ export async function analyzeCascadeInteractions(input: {
 
   // Run algorithmic pre-filter (deterministic, no LLM)
   const algorithmicFindings = detectAlgorithmicCascades(
-    medications, substrates, inhibitors, inducers, patientContext
+    medications, substrates, inhibitors, inducers, renalDosing, patientContext
   );
 
   // Build LLM prompt
