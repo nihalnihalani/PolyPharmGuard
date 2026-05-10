@@ -90,6 +90,22 @@ describe('Knowledge Base Validation', () => {
       expect(cyp2c19).toBeDefined();
       expect(cyp2c19.strength).toContain('strong');
     });
+
+    it('FDA spot-checks inhibitor strengths for sertraline, cimetidine, and clopidogrel', () => {
+      const content = readFileSync(join(KB_DIR, 'cyp450/inhibitors.json'), 'utf-8');
+      const data = JSON.parse(content);
+
+      const sertraline = data.find((e: any) => e.drug === 'sertraline');
+      expect(sertraline?.inhibitions.find((i: any) => i.enzyme === 'CYP2D6')?.strength).toBe('weak_inhibitor');
+
+      const cimetidine = data.find((e: any) => e.drug === 'cimetidine');
+      expect(cimetidine?.inhibitions.find((i: any) => i.enzyme === 'CYP1A2')?.strength).toBe('weak_inhibitor');
+      expect(cimetidine?.inhibitions.find((i: any) => i.enzyme === 'CYP2D6')?.strength).toBe('weak_inhibitor');
+      expect(cimetidine?.inhibitions.find((i: any) => i.enzyme === 'CYP3A4')?.strength).toBe('weak_inhibitor');
+
+      const clopidogrel = data.find((e: any) => e.drug === 'clopidogrel');
+      expect(clopidogrel?.inhibitions.find((i: any) => i.enzyme === 'CYP2C8')?.strength).toBe('moderate_inhibitor');
+    });
   });
 
   describe('Beers Criteria', () => {
@@ -118,13 +134,13 @@ describe('Knowledge Base Validation', () => {
       expect(ppiEntry).toBeDefined();
     });
 
-    it('gabapentin is in Beers criteria 2023', () => {
+    it('gabapentinoids are not encoded as standalone Beers Table 2 criteria', () => {
       const content = readFileSync(join(KB_DIR, 'beers-criteria.json'), 'utf-8');
       const data = JSON.parse(content);
       const gabapentinEntry = data.find((e: any) =>
         e.drug === 'gabapentin' || e.drugClass?.toLowerCase().includes('gabapentinoid')
       );
-      expect(gabapentinEntry).toBeDefined();
+      expect(gabapentinEntry).toBeUndefined();
     });
 
     it('all ageThreshold values are >= 65', () => {
@@ -142,16 +158,15 @@ describe('Knowledge Base Validation', () => {
       expect(() => JSON.parse(content)).not.toThrow();
     });
 
-    it('metformin has eGFR threshold at/near 30 and is contraindicated below it', () => {
+    it('metformin is contraindicated at eGFR 30 and below', () => {
       const content = readFileSync(join(KB_DIR, 'renal-hepatic/renal-dosing.json'), 'utf-8');
       const data = JSON.parse(content);
       const metformin = data.find((e: any) => e.drug === 'metformin');
       expect(metformin).toBeDefined();
       const contraindicatedRange = metformin.adjustments.find((a: any) => a.contraindicated === true);
       expect(contraindicatedRange).toBeDefined();
-      const max = contraindicatedRange.egfrRange.max;
-      expect(max).toBeGreaterThanOrEqual(25);
-      expect(max).toBeLessThanOrEqual(35);
+      expect(contraindicatedRange.egfrRange.min).toBe(0);
+      expect(contraindicatedRange.egfrRange.max).toBe(30);
     });
 
     it('gabapentin has dose adjustment for low eGFR (15-29)', () => {

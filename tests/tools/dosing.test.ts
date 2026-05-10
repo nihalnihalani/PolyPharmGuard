@@ -50,6 +50,20 @@ describe('check_organ_function_dosing', () => {
       expect(metforminFinding!.patientEgfr).toBe(28);
     });
 
+    it('flags metformin at exactly eGFR 30 as CRITICAL (contraindicated)', async () => {
+      const findings = await checkOrganFunctionDosing({
+        medications: ['Metformin 1000mg BID'],
+        patientContext: { ...mockPatientContextEgfr28, egfr: 30 },
+      });
+
+      const metforminFinding = findings.find(f =>
+        f.medication.toLowerCase().includes('metformin')
+      );
+      expect(metforminFinding).toBeDefined();
+      expect(metforminFinding!.severity).toBe('CRITICAL');
+      expect(metforminFinding!.patientEgfr).toBe(30);
+    });
+
     it('flags gabapentin dose adjustment at eGFR 28', async () => {
       const findings = await checkOrganFunctionDosing({
         medications: ['Gabapentin 300mg TID'],

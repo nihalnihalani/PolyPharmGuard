@@ -63,6 +63,23 @@ if (fluconazole) {
   check(cyp2c9 !== undefined, 'fluconazole has CYP2C9 inhibition entry', true);
 }
 
+const expectedInhibitorStrengths = [
+  { drug: 'sertraline', enzyme: 'CYP2D6', strength: 'weak_inhibitor' },
+  { drug: 'cimetidine', enzyme: 'CYP1A2', strength: 'weak_inhibitor' },
+  { drug: 'cimetidine', enzyme: 'CYP2D6', strength: 'weak_inhibitor' },
+  { drug: 'cimetidine', enzyme: 'CYP3A4', strength: 'weak_inhibitor' },
+  { drug: 'clopidogrel', enzyme: 'CYP2C8', strength: 'moderate_inhibitor' },
+];
+for (const expected of expectedInhibitorStrengths) {
+  const drug = inhibitors.find(e => e.drug === expected.drug);
+  const inhibition = drug?.inhibitions?.find((i: any) => i.enzyme === expected.enzyme);
+  check(
+    inhibition?.strength === expected.strength,
+    `${expected.drug} ${expected.enzyme} strength = "${inhibition?.strength}" (expected ${expected.strength})`,
+    true
+  );
+}
+
 // ── Mrs. Johnson's 12-drug coverage ───────────────────────────────────────────
 console.log('\n── Mrs. Johnson 12-Drug Coverage ───────────────────────────────');
 const allCuis = new Set([...substrateCuis, ...inhibitorCuis]);
@@ -84,8 +101,8 @@ check(beers.every(e => e.drug && e.recommendation && e.source), 'all Beers entri
 const beersDrugs = beers.map(e => (e.drug as string).toLowerCase());
 const hasPPI = beersDrugs.some(d => d.includes('ppi') || d.includes('omeprazole') || d.includes('proton'));
 check(hasPPI, 'Beers criteria includes PPI/omeprazole entry', true);
-const hasGabapentin = beersDrugs.some(d => d.includes('gabapentin') || d.includes('gabapentinoid'));
-check(hasGabapentin, 'Beers criteria includes gabapentin/gabapentinoids (2023 update)', true);
+const hasStandaloneGabapentinoid = beersDrugs.some(d => d.includes('gabapentin') || d.includes('pregabalin') || d.includes('gabapentinoid'));
+check(!hasStandaloneGabapentinoid, 'Beers criteria does not encode gabapentinoids as standalone Table 2 criteria', true);
 const allAgeThresholds = beers.filter(e => e.ageThreshold != null).map(e => e.ageThreshold);
 check(allAgeThresholds.every(a => a >= 65), `all Beers ageThreshold values >= 65 (found: ${allAgeThresholds.join(', ')})`, true);
 

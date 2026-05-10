@@ -128,6 +128,25 @@ describe('screen_deprescribing', () => {
   });
 
   describe('condition-aware screening', () => {
+    it('does not flag gabapentin solely as a standalone Beers criterion', async () => {
+      const findings = await screenDeprescribing({
+        medications: ['Gabapentin 300mg TID'],
+        patientContext: {
+          patient: { resourceType: 'Patient', id: 'test-001', birthDate: '1947-08-15' },
+          medications: [],
+          observations: [],
+          conditions: [],
+          age: 78,
+        },
+        patientAge: 78,
+      });
+
+      const gabapentinBeersFinding = findings.find(f =>
+        f.medication.toLowerCase().includes('gabapentin') && f.beersFlag
+      );
+      expect(gabapentinBeersFinding).toBeUndefined();
+    });
+
     it('does not recommend stopping warfarin when AFib is documented', async () => {
       const findings = await screenDeprescribing({
         medications: [warfarinMedReq],
