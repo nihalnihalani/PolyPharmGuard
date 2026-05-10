@@ -27,6 +27,8 @@ import { screenDeprescribing } from '../mcp-server/tools/deprescribing-screen.js
 import { analyzePDInteractions } from '../mcp-server/tools/pd-interactions.js';
 import { checkPharmacogenomics } from '../mcp-server/tools/pharmacogenomics.js';
 import { checkLabMonitoring } from '../mcp-server/tools/lab-monitoring.js';
+import { FHIRClient } from '../fhir/client.js';
+import { loadPatientBundle } from '../fhir/queries.js';
 
 export interface MedReviewRequest {
   patientId?: string;
@@ -373,7 +375,52 @@ function buildPharmacyTasks(
   return tasks;
 }
 
-export async function runMedicationReview(request: MedReviewRequest): Promise<MedReviewReport> {
+/**
+ * Hydrate a request that supplied only `patientId` + `fhirContext` but no
+ * inline patient/medications/observations/conditions. Pulls the bundle from
+ * the FHIR server and merges it into the request before downstream tools run.
+ *
+ * Inline data (when supplied) always wins — a caller that already loaded
+ * patient state (web fixture path, e2e tests) is the source of truth and we
+ * don't re-fetch over the network for them.
+ *
+ * On FHIR failure we log and return the request unchanged. Downstream tools
+ * already degrade gracefully when patient context is empty, so a transient
+ * FHIR outage produces a thin review (with INFO-level "context unavailable"
+ * findings) rather than a 500.
+ */
+async function hydrateFromFHIR(request: MedReviewRequest): Promise<MedReviewRequest> {
+  const hasInlineData =
+    request.patient !== undefined ||
+    (request.medications && request.medications.length > 0) ||
+    (request.observations && request.observations.length > 0) ||
+    (request.conditions && request.conditions.length > 0);
+  if (hasInlineData) return request;
+
+  if (!request.fhirContext) return request;
+  const ctx = request.fhirContext;
+  if (!ctx.fhirServerUrl || !ctx.accessToken || !ctx.patientId) return request;
+
+  try {
+    const client = new FHIRClient();
+    client.connect(ctx.fhirServerUrl, ctx.accessToken);
+    const bundle = await loadPatientBundle(client, ctx.patientId);
+    return {
+      ...request,
+      patientId: request.patientId ?? ctx.patientId,
+      patient: bundle.patient,
+      medications: bundle.medications,
+      observations: bundle.observations,
+      conditions: bundle.conditions,
+    };
+  } catch (err) {
+    console.error('[MedReview] FHIR hydration failed:', (err as Error).message);
+    return request;
+  }
+}
+
+export async function runMedicationReview(rawRequest: MedReviewRequest): Promise<MedReviewReport> {
+  const request = await hydrateFromFHIR(rawRequest);
   const patientContext = buildPatientContext(request);
   const medications = request.medications ?? [];
   const medNames = getMedNames(medications);

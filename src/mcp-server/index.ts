@@ -12,7 +12,7 @@ import { checkPharmacogenomics } from './tools/pharmacogenomics.js';
 import { checkLabMonitoring } from './tools/lab-monitoring.js';
 import { resolveFHIRContext } from './sharp/context.js';
 import { FHIRClient } from '../fhir/client.js';
-import { getPatientContext } from '../fhir/queries.js';
+import { getPatientContext, loadPatientObservations } from '../fhir/queries.js';
 import { logToolCall } from '../audit/db.js';
 
 function hashInputs(input: unknown): string {
@@ -293,9 +293,37 @@ server.tool(
   },
   async (input) => {
     const start = Date.now();
+
+    // If the caller supplied SHARP/FHIR context but no recent labs, pull the
+    // observation panel from FHIR so the tool has data to evaluate. Without
+    // this, a SMART-on-FHIR launch with valid headers but `recentLabs: []`
+    // would silently return zero findings — the tool would have nothing to
+    // compare KB monitoring requirements against, defeating the whole point.
+    let recentLabs = input.recentLabs;
+    if ((!recentLabs || recentLabs.length === 0)) {
+      const fhirCtx = resolveFHIRContext(input, null);
+      if (fhirCtx) {
+        try {
+          const client = new FHIRClient();
+          client.connect(fhirCtx.fhirServerUrl, fhirCtx.accessToken);
+          const observations = await loadPatientObservations(client, fhirCtx.patientId, 180);
+          recentLabs = observations
+            .filter(o => o.valueQuantity)
+            .map(o => ({
+              loincCode: o.code?.coding?.[0]?.code ?? '',
+              value: o.valueQuantity!.value,
+              date: o.effectiveDateTime ?? '',
+              labName: o.code?.text ?? o.code?.coding?.[0]?.display ?? '',
+            }));
+        } catch (err) {
+          console.error('[MCP] FHIR observation fetch for lab-monitoring failed:', (err as Error).message);
+        }
+      }
+    }
+
     const findings = await checkLabMonitoring({
       medications: input.medications,
-      recentLabs: input.recentLabs,
+      recentLabs: recentLabs ?? [],
     });
     const result = {
       content: [{ type: 'text' as const, text: JSON.stringify({ findings, timestamp: new Date().toISOString() }, null, 2) }],

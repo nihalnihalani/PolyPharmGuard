@@ -8,7 +8,17 @@ import { checkLabMonitoring } from '../../../../../src/mcp-server/tools/lab-moni
 import { logToolCall } from '../../../../../src/audit/db';
 import { loadMrsJohnsonData } from '../../../../../data/synthea/mrs-johnson/index';
 import { loadMrPatelData } from '../../../../../data/synthea/mr-patel/index';
+import { FHIRClient } from '../../../../../src/fhir/client';
+import { loadPatientBundle } from '../../../../../src/fhir/queries';
 import { createHash } from 'node:crypto';
+import type { FHIRPatient, FHIRMedicationRequest, FHIRObservation, FHIRCondition } from '../../../../../src/types/fhir';
+
+interface PatientBundleData {
+  patient: FHIRPatient;
+  medications: FHIRMedicationRequest[];
+  observations: FHIRObservation[];
+  conditions: FHIRCondition[];
+}
 
 function hashInput(input: unknown): string {
   return createHash('sha256').update(JSON.stringify(input)).digest('hex').slice(0, 16);
@@ -38,15 +48,47 @@ async function runClinicalTool<T>(
 }
 
 /**
- * Dispatch synthetic patient bundle by patientId.
- * Production builds would resolve via FHIR server; for the hackathon demo we
- * route between hand-curated cases. Unknown IDs fall back to Mrs. Johnson so
- * existing links keep working.
+ * Dispatch by patientId with explicit fallback rules:
+ *  1. If SHARP/FHIR headers are present, fetch from the live FHIR server.
+ *  2. Otherwise, if patientId matches a known synthea fixture, return it.
+ *  3. Otherwise, return null so the caller can 404.
+ *
+ * The previous implementation silently fell back to Mrs. Johnson for any
+ * unknown id — meaning a typo in the URL produced a real-looking review for
+ * the wrong patient. That's a clinical-safety hazard. We now refuse to
+ * fabricate.
  */
-function loadPatientByID(patientId: string) {
+function loadFixturePatient(patientId: string): PatientBundleData | null {
   const id = patientId.toLowerCase();
   if (id.includes('patel')) return loadMrPatelData();
-  return loadMrsJohnsonData();
+  if (id.includes('johnson')) return loadMrsJohnsonData();
+  return null;
+}
+
+interface SHARPHeaders {
+  fhirServerUrl: string;
+  accessToken: string;
+  patientId: string;
+}
+
+function extractSHARPHeaders(req: NextRequest, fallbackPatientId: string): SHARPHeaders | null {
+  const fhirServerUrl = req.headers.get('x-fhir-server-url');
+  const accessToken = req.headers.get('x-fhir-access-token');
+  const patientId = req.headers.get('x-patient-id') ?? fallbackPatientId;
+  if (!fhirServerUrl || !accessToken || !patientId) return null;
+  return { fhirServerUrl, accessToken, patientId };
+}
+
+async function loadFromFHIR(headers: SHARPHeaders): Promise<PatientBundleData> {
+  const client = new FHIRClient();
+  client.connect(headers.fhirServerUrl, headers.accessToken);
+  const bundle = await loadPatientBundle(client, headers.patientId);
+  return {
+    patient: bundle.patient,
+    medications: bundle.medications,
+    observations: bundle.observations,
+    conditions: bundle.conditions,
+  };
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ patientId: string }> }) {
@@ -57,9 +99,57 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
   // possible without sticky sessions.
   const requestId = (_req.headers.get('x-request-id') ?? createHash('sha256').update(`${patientId}-${start}`).digest('hex').slice(0, 8));
 
-  // For demo: dispatch synthetic patients by ID.
-  // In production: fetch from FHIR server using patientId.
-  const patientData = loadPatientByID(patientId);
+  // Resolve patient data with explicit precedence:
+  //   1. SHARP-on-FHIR headers (live launch from an EHR)
+  //   2. Synthetic fixture for known demo patients (mr-patel*, mrs-johnson*)
+  //   3. 404 — never silently substitute another patient.
+  const sharpHeaders = extractSHARPHeaders(_req, patientId);
+  let patientData: PatientBundleData | null = null;
+  let dataSource: 'fhir' | 'fixture' = 'fixture';
+  if (sharpHeaders) {
+    try {
+      patientData = await loadFromFHIR(sharpHeaders);
+      dataSource = 'fhir';
+    } catch (err) {
+      console.error(JSON.stringify({
+        ts: new Date().toISOString(),
+        svc: 'web-api',
+        level: 'error',
+        reqId: requestId,
+        msg: 'FHIR hydration failed for SHARP-launched review',
+        patientId,
+        error: (err as Error).message,
+      }));
+      return NextResponse.json(
+        {
+          error: `Failed to load patient data from FHIR: ${(err as Error).message}`,
+          code: 'FHIR_FETCH_FAILED',
+          requestId,
+        },
+        { status: 502, headers: { 'X-Request-Id': requestId } }
+      );
+    }
+  } else {
+    patientData = loadFixturePatient(patientId);
+    if (!patientData) {
+      console.error(JSON.stringify({
+        ts: new Date().toISOString(),
+        svc: 'web-api',
+        level: 'warn',
+        reqId: requestId,
+        msg: 'unknown patientId without SHARP headers',
+        patientId,
+      }));
+      return NextResponse.json(
+        {
+          error: `Patient '${patientId}' not found. Provide SHARP-on-FHIR headers (X-FHIR-Server-URL, X-FHIR-Access-Token, X-Patient-ID) for a live launch, or use a known demo patient id (mr-patel-001, mrs-johnson).`,
+          code: 'PATIENT_NOT_FOUND',
+          requestId,
+        },
+        { status: 404, headers: { 'X-Request-Id': requestId } }
+      );
+    }
+  }
 
   // Extract medication names from FHIR resources
   const medications = patientData.medications.map(m => m.medicationCodeableConcept?.text ?? 'Unknown');
@@ -259,6 +349,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
     path: `/api/review/${patientId}`,
     status: 200,
     durMs: Date.now() - start,
+    dataSource,
     findingCounts: {
       cascade: cascade.length,
       dosing: dosing.length,
