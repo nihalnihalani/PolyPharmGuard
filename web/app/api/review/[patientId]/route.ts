@@ -439,6 +439,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
       appVersion: process.env['npm_package_version'] ?? '1.0.0',
     });
   } catch (err) {
+    const e = err as Error;
+    // Persistence failure is non-fatal — log with stack so operators can
+    // diagnose, then serve the live response anyway. Common causes: DB file
+    // permissions, disk full, native binding load failure (most often a
+    // bundler config issue, see web/next.config.ts).
     console.error(JSON.stringify({
       ts: new Date().toISOString(),
       svc: 'web-api',
@@ -446,7 +451,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
       reqId: requestId,
       msg: 'Review snapshot save failed; serving live response anyway',
       reviewId,
-      error: (err as Error).message,
+      error: e.message,
+      stack: e.stack,
     }));
   }
 
