@@ -73,18 +73,29 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ rev
           </>
         )}
         <Text style={styles.sectionHeader}>Clinical Findings ({allFindings.length})</Text>
-        {allFindings.slice(0, 10).map((f: { severity: string; finding: string; clinicalConsequence?: string; recommendation?: string }, i: number) => (
-          <View key={i} style={styles.finding}>
-            <Text style={styles.findingTitle}>[{f.severity}] {f.finding}</Text>
-            {f.clinicalConsequence && <Text style={{ fontSize: 9 }}>{f.clinicalConsequence}</Text>}
-            {f.recommendation && (
-              <>
-                <Text style={[styles.label, { marginTop: 3 }]}>RECOMMENDATION:</Text>
-                <Text style={{ fontSize: 9 }}>{f.recommendation}</Text>
-              </>
-            )}
-          </View>
-        ))}
+        {/* Render every actionable finding. Clinical documentation must not
+            silently truncate — a clinician relying on the PDF could miss a
+            relevant safety flag. Severity-sorted so CRITICAL/HIGH appear
+            first; LOW/INFO are kept for completeness but visually demoted. */}
+        {(() => {
+          const sevOrder: Record<string, number> = { CRITICAL: 0, HIGH: 1, MODERATE: 2, LOW: 3, INFO: 4 };
+          const sorted = [...allFindings].sort(
+            (a: { severity: string }, b: { severity: string }) =>
+              (sevOrder[a.severity] ?? 9) - (sevOrder[b.severity] ?? 9)
+          );
+          return sorted.map((f: { severity: string; finding: string; clinicalConsequence?: string; recommendation?: string }, i: number) => (
+            <View key={i} style={styles.finding}>
+              <Text style={styles.findingTitle}>[{f.severity}] {f.finding}</Text>
+              {f.clinicalConsequence && <Text style={{ fontSize: 9 }}>{f.clinicalConsequence}</Text>}
+              {f.recommendation && (
+                <>
+                  <Text style={[styles.label, { marginTop: 3 }]}>RECOMMENDATION:</Text>
+                  <Text style={{ fontSize: 9 }}>{f.recommendation}</Text>
+                </>
+              )}
+            </View>
+          ));
+        })()}
         <Text style={styles.footer}>
           PolyPharmGuard | Clinical Decision Support Tool | For professional use only | Not a substitute for clinical judgment
         </Text>
