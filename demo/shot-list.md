@@ -44,10 +44,10 @@ Browser: Chrome (latest), profile with no extensions visible, zoom 110%.
 - **URL**: `http://localhost:3001/batch`
 - **Route file**: `web/app/batch/page.tsx`
 - **Viewport**: 1440x900
-- **Demo data prerequisite**: `web/app/batch/page.tsx` is now a server component that fetches real scores from `/api/review/{id}` for the two real synthea patients (Mr. Patel, Mrs. Johnson) and sorts descending. With the prodrug-failure / residual-CYP3A4 / DAPT-at-risk factors landed, Mr. Patel renders **80 CRITICAL** above Mrs. Johnson **~74 CRITICAL**. Confirm with `curl http://localhost:3001/api/review/mr-patel | jq '.riskScore.score'` before record day. No vapor patients (John Doe / Jane Smith removed).
+- **Demo data prerequisite**: `web/app/batch/page.tsx` is now a server component that fetches real scores from `/api/review/{id}` for the two real synthea patients (Mr. Patel, Mrs. Johnson) and sorts descending. With the prodrug-failure / residual-CYP3A4 / DAPT-at-risk factors landed, both patients render **85 CRITICAL** in the current scorer; Mr. Patel ranks first by clinical-acuity tiebreak (prodrug failure x2 + DAPT-at-risk). Confirm with `curl http://localhost:3001/api/review/mr-patel | jq '.riskScore.score'` before record day. No vapor patients (John Doe / Jane Smith removed).
 - **Cursor sequence**:
   1. Page loads, two patient cards visible
-  2. Cursor hovers Mr. Patel's red 80 badge — 1s
+  2. Cursor hovers Mr. Patel's red 85 badge — 1s
   3. Cursor clicks "Review" button on Mr. Patel row
 - **What must be visible**: title "Pharmacist Review Queue", two risk-ranked patient cards with real score badges
 - **Duration on screen**: 10s queue view + transition
@@ -57,15 +57,15 @@ Browser: Chrome (latest), profile with no extensions visible, zoom 110%.
 - **URL**: `http://localhost:3001/review/mr-patel`
 - **Route file**: `web/app/review/[patientId]/page.tsx`
 - **Viewport**: 1440x900, but expect to scroll
-- **Demo data prerequisite**: `data/synthea/mr-patel/` bundle is in place: patient.json (DOB 1963-09-12, age 62), medications.json (fluvoxamine 100mg, tizanidine 4mg, clopidogrel 75mg, completed Paxlovid course within last ~10 days, atorvastatin 40mg, lisinopril 20mg, metformin 1000mg, aspirin 81mg), conditions.json (T2DM, HTN, OCD, COVID resolved, post-DES, lumbar spasm), observations.json (eGFR 78, HbA1c 7.2). Risk score with new factors: **80 CRITICAL**.
+- **Demo data prerequisite**: `data/synthea/mr-patel/` bundle is in place: patient.json (DOB 1963-09-12, age 62), medications.json (fluvoxamine 100mg, tizanidine 4mg, clopidogrel 75mg, completed Paxlovid course within last ~10 days, atorvastatin 40mg, lisinopril 20mg, metformin 1000mg, aspirin 81mg), conditions.json (T2DM, HTN, OCD, COVID resolved, post-DES, lumbar spasm), observations.json (eGFR 78, HbA1c 7.2). Risk score with new factors: **85 CRITICAL**.
 - **Cursor sequence**:
-  1. Page loads, gauge animates to 80 CRITICAL
+  1. Page loads, gauge animates to 85 CRITICAL
   2. Pairwise-vs-PolyPharmGuard side-by-side overlay appears (this is an editing overlay added in post — NOT part of the live page)
   3. Cursor expands top finding in evidence accordion
   4. Cursor moves down each of 4 numbered chain steps
   5. Cursor scrolls smoothly to Cytoscape graph — wait for layout settle (1.5s)
   6. Cursor hovers a red cell in the Medication Risk Matrix to surface tooltip
-- **What must be visible**: RiskScoreGauge (80 CRITICAL with named factors: CYP cascade HIGH x2, Prodrug activation failure, Residual CYP3A4 inhibitor window, DAPT at risk), Drug Interaction Graph with fluvoxamine → clopidogrel/tizanidine/atorvastatin edges, Medication Risk Matrix, Evidence Chain Accordion with numbered steps + FDA citations
+- **What must be visible**: RiskScoreGauge (85 CRITICAL with named factors: CYP cascade HIGH x3, Prodrug activation failure x2, Residual CYP3A4 inhibitor window, DAPT at risk), Drug Interaction Graph with fluvoxamine → clopidogrel/tizanidine/atorvastatin edges, Medication Risk Matrix, Evidence Chain Accordion with numbered steps + FDA citations
 - **Duration on screen**: 60 seconds (longest single shot)
 
 ## SHOT-06 — Mrs. Johnson medication review
@@ -75,7 +75,7 @@ Browser: Chrome (latest), profile with no extensions visible, zoom 110%.
 - **Viewport**: 1440x900
 - **Demo data prerequisite**: `data/synthea/mrs-johnson/` — VERIFIED PRESENT (medications.json has fluconazole + simvastatin among 12 meds, observations include eGFR 28)
 - **Cursor sequence**:
-  1. Page loads, gauge shows 74 CRITICAL
+  1. Page loads, gauge shows 85 CRITICAL
   2. Cursor expands the fluconazole → simvastatin cascade finding (4-step chain)
   3. Cursor scrolls to deprescribing finding for chronic PPI
   4. Cursor expands deprescribing → taper schedule template visible

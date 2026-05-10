@@ -7,7 +7,7 @@ Run through this top-to-bottom **before** hitting record. Estimated setup time: 
 ## A. Gating items (record CANNOT begin until these are green)
 
 - [ ] **Mr. Patel synthea bundle exists** at `data/synthea/mr-patel/` with patient.json, medications.json (must include fluvoxamine, tizanidine, clopidogrel, recent ritonavir), conditions.json, observations.json (CrCl ≈ 52). Without this, SHOT-05 cannot be recorded. Owned by Tool Dev 1 (Agent 3).
-- [ ] **`/batch` queue includes Mr. Patel as top row** with risk 81 CRITICAL. Edit `web/app/batch/page.tsx` `DEMO_PATIENTS` array.
+- [ ] **`/batch` queue includes Mr. Patel as top row** with risk 85 CRITICAL (Mrs. Johnson also at 85; Patel ranks first by acuity tiebreak). Verified via `curl http://localhost:3001/api/review/mr-patel | jq '.riskScore.score'`.
 - [ ] **`/review/mr-patel` returns 200** with at least 4 cited cascade findings — verify with `curl http://localhost:3001/api/review/mr-patel | jq '.findings.cascade | length'`
 - [ ] **`/review/mrs-johnson` returns 200** with fluconazole-simvastatin cascade present
 - [ ] **`/api/cds-hooks` POST returns at least one critical card** with the Mr. Patel context — capture the exact response into `demo/assets/cds-hooks-response.json`

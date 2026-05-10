@@ -44,13 +44,13 @@ Format: `[mm:ss–mm:ss]` `[VOICEOVER]` / `[ON-SCREEN]` / `[CURSOR]`
 
 ### Beat 2.1 — Mr. Patel: the subtle case (0:30–0:55)
 
-`[ON-SCREEN]` Click "Review Queue" in the nav. Land on `/batch`. Two patient rows visible — Mr. Patel at top with risk score 80 CRITICAL, Mrs. Johnson below. Hover then click his row.
+`[ON-SCREEN]` Click "Review Queue" in the nav. Land on `/batch`. Two patient rows visible — Mr. Patel at top with risk score 85 CRITICAL, Mrs. Johnson below also at 85 CRITICAL. Mr. Patel ranks first because of the prodrug-activation-failure factor (no pairwise checker can see it). Hover then click his row.
 
 `[VOICEOVER]` Meet Mr. Patel. Sixty-two, on fluvoxamine, tizanidine, and clopidogrel — and he just finished a Paxlovid course. Every pairwise checker his pharmacy uses passed him. Ours didn't.
 
 `[CURSOR]` Click "Review" next to Mr. Patel. Page transitions to `/review/mr-patel`.
 
-`[ON-SCREEN]` Risk gauge spins up to 80 / CRITICAL in red. A side-by-side panel slides in: left "Pairwise Checker — 0 critical alerts." Right: "PolyPharmGuard — 4 cited cascade findings."
+`[ON-SCREEN]` Risk gauge spins up to 85 / CRITICAL in red. A side-by-side panel slides in: left "Pairwise Checker — 0 critical alerts." Right: "PolyPharmGuard — 4 cited cascade findings."
 
 ### Beat 2.2 — The synthesis moment (0:55–1:20)
 
@@ -73,7 +73,7 @@ Format: `[mm:ss–mm:ss]` `[VOICEOVER]` / `[ON-SCREEN]` / `[CURSOR]`
 
 ### Beat 2.4 — Mrs. Johnson: and the obvious stuff too (1:35–1:50)
 
-`[ON-SCREEN]` Click nav link "Demo Review" — land on `/review/mrs-johnson`. Risk gauge: 74 CRITICAL. Scroll to the deprescribing finding.
+`[ON-SCREEN]` Click nav link "Demo Review" — land on `/review/mrs-johnson`. Risk gauge: 85 CRITICAL. Scroll to the deprescribing finding.
 
 `[VOICEOVER]` And Mrs. Johnson, seventy-eight, twelve meds, eGFR twenty-eight. We catch the obvious things too — fluconazole inhibiting CYP3A4 to spike her simvastatin three-fold, with renal impairment amplifying rhabdomyolysis risk. Plus a four-week taper plan for the PPI she's been on for a decade.
 
@@ -85,7 +85,7 @@ Format: `[mm:ss–mm:ss]` `[VOICEOVER]` / `[ON-SCREEN]` / `[CURSOR]`
 
 ### Beat 3.1 — Pharmacist queue (1:50–2:00)
 
-`[ON-SCREEN]` Click nav "Review Queue" — back to `/batch`. Two patients ranked by composite risk index: Mr. Patel 80 / CRITICAL on top, Mrs. Johnson around 74 / CRITICAL below.
+`[ON-SCREEN]` Click nav "Review Queue" — back to `/batch`. Two patients ranked by composite risk index: Mr. Patel 85 / CRITICAL on top, Mrs. Johnson 85 / CRITICAL below — both critical, Mr. Patel ranked first by clinical acuity (prodrug failure + DAPT-at-risk).
 
 `[VOICEOVER]` Pharmacists triage by risk, not by alphabet. Highest-risk patient first.
 
