@@ -73,6 +73,12 @@ export interface FHIRObservation {
     system?: string;
     code?: string;
   };
+  // PGx phenotype Observations carry the result as a CodeableConcept whose
+  // text is the phenotype label (e.g. "Poor Metabolizer"); some labs use
+  // the freeform valueString. Optional; legacy lab Observations only use
+  // valueQuantity above.
+  valueCodeableConcept?: FHIRCodeableConcept;
+  valueString?: string;
   effectiveDateTime?: string;
 }
 

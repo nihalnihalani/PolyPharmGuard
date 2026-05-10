@@ -10,6 +10,7 @@ import { loadMrsJohnsonData } from '../../../../../data/synthea/mrs-johnson/inde
 import { loadMrPatelData } from '../../../../../data/synthea/mr-patel/index';
 import { FHIRClient } from '../../../../../src/fhir/client';
 import { loadPatientBundle } from '../../../../../src/fhir/queries';
+import { loadPatientGenotypes } from '../../../../../src/fhir/pgx-queries';
 import { createHash } from 'node:crypto';
 import type { FHIRPatient, FHIRMedicationRequest, FHIRObservation, FHIRCondition } from '../../../../../src/types/fhir';
 
@@ -187,9 +188,26 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
     egfr,
   };
 
-  // Run all six tools in parallel. Pharmacogenomics returns no findings unless
-  // genotype data is supplied by the calling workflow.
-  const genotypes: Record<string, string> = {};
+  // Run all six tools in parallel. Pharmacogenomics needs gene → phenotype
+  // genotypes; we hydrate from FHIR when SHARP context is present, otherwise
+  // pass an empty record (PGx tool degrades gracefully to no calls).
+  let genotypes: Record<string, string> = {};
+  if (sharpHeaders) {
+    try {
+      const client = new FHIRClient();
+      client.connect(sharpHeaders.fhirServerUrl, sharpHeaders.accessToken);
+      genotypes = await loadPatientGenotypes(client, sharpHeaders.patientId);
+    } catch (err) {
+      console.error(JSON.stringify({
+        ts: new Date().toISOString(),
+        svc: 'web-api',
+        level: 'warn',
+        reqId: requestId,
+        msg: 'PGx genotype fetch failed; PGx tool will run with no genotypes',
+        error: (err as Error).message,
+      }));
+    }
+  }
   const [
     cascadeResult,
     dosingResult,
