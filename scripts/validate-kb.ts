@@ -54,7 +54,8 @@ check(fluconazole !== undefined, 'fluconazole is in inhibitors.json', true);
 if (fluconazole) {
   const cyp3a4 = fluconazole.inhibitions?.find((i: any) => i.enzyme === 'CYP3A4');
   check(cyp3a4 !== undefined, 'fluconazole has CYP3A4 inhibition entry', true);
-  check(cyp3a4?.strength?.includes('strong'), `fluconazole CYP3A4 strength = "${cyp3a4?.strength}" (expected strong)`, true);
+  // FDA: moderate at standard doses (≤200mg/day), strong only at ≥400mg/day. Accept either.
+  check(/^(moderate|strong)_inhibitor$/.test(cyp3a4?.strength ?? ''), `fluconazole CYP3A4 strength = "${cyp3a4?.strength}" (expected moderate or strong)`, true);
   const cyp2c19 = fluconazole.inhibitions?.find((i: any) => i.enzyme === 'CYP2C19');
   check(cyp2c19 !== undefined, 'fluconazole has CYP2C19 inhibition entry', true);
   check(cyp2c19?.strength?.includes('strong'), `fluconazole CYP2C19 strength = "${cyp2c19?.strength}" (expected strong)`, true);
