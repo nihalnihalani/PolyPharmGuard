@@ -14,6 +14,29 @@ function hashInput(input: unknown): string {
   return createHash('sha256').update(JSON.stringify(input)).digest('hex').slice(0, 16);
 }
 
+async function runClinicalTool<T>(
+  requestId: string,
+  toolName: string,
+  run: () => Promise<T[]>
+): Promise<{ findings: T[]; status: { ok: boolean; count: number; error?: string } }> {
+  try {
+    const findings = await run();
+    return { findings, status: { ok: true, count: findings.length } };
+  } catch (err) {
+    const error = (err as Error).message;
+    console.error(JSON.stringify({
+      ts: new Date().toISOString(),
+      svc: 'web-api',
+      level: 'error',
+      reqId: requestId,
+      toolName,
+      msg: 'clinical tool failed',
+      error,
+    }));
+    return { findings: [], status: { ok: false, count: 0, error } };
+  }
+}
+
 /**
  * Dispatch synthetic patient bundle by patientId.
  * Production builds would resolve via FHIR server; for the hackathon demo we
@@ -77,17 +100,50 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
   // Run all six tools in parallel. Pharmacogenomics returns no findings unless
   // genotype data is supplied by the calling workflow.
   const genotypes: Record<string, string> = {};
-  const [cascade, dosing, deprescribing, pd, pharmacogenomics, labMonitoring] = await Promise.all([
-    analyzeCascadeInteractions({ medications, patientContext }).catch(() => []),
-    checkOrganFunctionDosing({ medications, patientContext }).catch(() => []),
-    screenDeprescribing({ medications, patientAge, patientContext }).catch(() => []),
-    analyzePDInteractions({ medications, patientContext }).catch(() => []),
-    checkPharmacogenomics({ medications, genotypes }).catch(() => []),
-    checkLabMonitoring({ medications, recentLabs }).catch(() => []),
+  const [
+    cascadeResult,
+    dosingResult,
+    deprescribingResult,
+    pdResult,
+    pharmacogenomicsResult,
+    labMonitoringResult,
+  ] = await Promise.all([
+    runClinicalTool(requestId, 'analyze_cascade_interactions', () =>
+      analyzeCascadeInteractions({ medications, patientContext })
+    ),
+    runClinicalTool(requestId, 'check_organ_function_dosing', () =>
+      checkOrganFunctionDosing({ medications, patientContext })
+    ),
+    runClinicalTool(requestId, 'screen_deprescribing', () =>
+      screenDeprescribing({ medications, patientAge, patientContext })
+    ),
+    runClinicalTool(requestId, 'analyze_pharmacodynamic_interactions', () =>
+      analyzePDInteractions({ medications, patientContext })
+    ),
+    runClinicalTool(requestId, 'check_pharmacogenomics', () =>
+      checkPharmacogenomics({ medications, genotypes })
+    ),
+    runClinicalTool(requestId, 'check_lab_monitoring', () =>
+      checkLabMonitoring({ medications, recentLabs })
+    ),
   ]);
+  const cascade = cascadeResult.findings;
+  const dosing = dosingResult.findings;
+  const deprescribing = deprescribingResult.findings;
+  const pd = pdResult.findings;
+  const pharmacogenomics = pharmacogenomicsResult.findings;
+  const labMonitoring = labMonitoringResult.findings;
 
   const reviewId = `review_${patientId}_${Date.now()}`;
   const outputs = { cascade, dosing, deprescribing, pd, pharmacogenomics, labMonitoring };
+  const toolStatus = {
+    cascade: cascadeResult.status,
+    dosing: dosingResult.status,
+    deprescribing: deprescribingResult.status,
+    pd: pdResult.status,
+    pharmacogenomics: pharmacogenomicsResult.status,
+    labMonitoring: labMonitoringResult.status,
+  };
 
   // Log to audit trail
   try {
@@ -221,6 +277,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
     medications,
     riskScore,
     findings: outputs,
+    toolStatus,
     timestamp: new Date().toISOString(),
   });
 }

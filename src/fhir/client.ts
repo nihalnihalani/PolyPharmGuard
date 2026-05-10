@@ -15,12 +15,13 @@ export class FHIRClient {
   private serverUrl: string = '';
   private accessToken: string = '';
   private connected: boolean = false;
+  private timeoutMs: number = parsePositiveInt(process.env['FHIR_TIMEOUT_MS'], 10_000);
 
   toJSON() {
-    return { serverUrl: this.serverUrl, connected: this.connected };
+    return { serverUrl: this.serverUrl, connected: this.connected, timeoutMs: this.timeoutMs };
   }
 
-  connect(serverUrl: string, accessToken: string): void {
+  connect(serverUrl: string, accessToken: string, timeoutMs?: number): void {
     try {
       new URL(serverUrl);
     } catch {
@@ -28,21 +29,32 @@ export class FHIRClient {
     }
     this.serverUrl = serverUrl.replace(/\/$/, '');
     this.accessToken = accessToken;
+    if (timeoutMs !== undefined && Number.isFinite(timeoutMs) && timeoutMs > 0) {
+      this.timeoutMs = timeoutMs;
+    }
     this.connected = true;
   }
 
   private async fhirGet<T>(path: string): Promise<T> {
     const url = `${this.serverUrl}${path}`;
     let response: Response;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
       response = await fetch(url, {
+        signal: controller.signal,
         headers: {
           'Authorization': `Bearer ${this.accessToken}`,
           'Accept': 'application/fhir+json',
         },
       });
     } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        throw new FHIRError(0, `FHIR request timed out after ${this.timeoutMs}ms`, url);
+      }
       throw new FHIRError(0, `Network error connecting to FHIR server: ${(err as Error).message}`, url);
+    } finally {
+      clearTimeout(timeout);
     }
 
     if (!response.ok) {
@@ -86,4 +98,9 @@ export class FHIRClient {
     );
     return (bundle.entry ?? []).map(e => e.resource);
   }
+}
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }

@@ -17,12 +17,46 @@ const AGENT_CARD = JSON.parse(
 );
 
 const PORT = parseInt(process.env['A2A_AGENT_PORT'] ?? '8000', 10);
+const ALLOWED_ORIGIN = process.env['A2A_ALLOWED_ORIGIN'] ?? '*';
+const MAX_BODY_BYTES = parsePositiveInt(process.env['A2A_MAX_BODY_BYTES'], 1024 * 1024);
 
-function getBody(req: IncomingMessage): Promise<string> {
+class RequestBodyTooLargeError extends Error {
+  constructor(public readonly limitBytes: number) {
+    super(`Request body exceeds ${limitBytes} byte limit`);
+    this.name = 'RequestBodyTooLargeError';
+  }
+}
+
+type A2ATaskPayload = {
+  id?: string;
+  message?: { parts?: Array<{ data?: unknown }>; data?: unknown };
+  params?: { parts?: Array<{ data?: unknown }>; data?: unknown };
+  data?: unknown;
+};
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function getBody(req: IncomingMessage, maxBodyBytes: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', chunk => chunks.push(chunk));
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+    let totalBytes = 0;
+    let rejected = false;
+    req.on('data', (chunk: Buffer) => {
+      if (rejected) return;
+      totalBytes += chunk.length;
+      if (totalBytes > maxBodyBytes) {
+        rejected = true;
+        reject(new RequestBodyTooLargeError(maxBodyBytes));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      if (!rejected) resolve(Buffer.concat(chunks).toString('utf-8'));
+    });
     req.on('error', reject);
   });
 }
@@ -32,7 +66,7 @@ function sendJSON(res: ServerResponse, statusCode: number, data: unknown) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(body),
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   });
   res.end(body);
 }
@@ -55,6 +89,8 @@ const httpServer = createServer(async (req, res) => {
   const requestId = (req.headers['x-request-id'] as string | undefined) ?? randomUUID().slice(0, 8);
   const start = Date.now();
   res.setHeader('X-Request-Id', requestId);
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  res.setHeader('Access-Control-Expose-Headers', 'X-Request-Id');
   res.on('finish', () => {
     console.error(JSON.stringify({
       ts: new Date().toISOString(),
@@ -70,7 +106,7 @@ const httpServer = createServer(async (req, res) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': '*',
     });
@@ -98,13 +134,29 @@ const httpServer = createServer(async (req, res) => {
   // A2A task endpoint
   if (req.method === 'POST' && (url.pathname === '/tasks/send' || url.pathname === '/')) {
     try {
-      const body = await getBody(req);
-      const task = JSON.parse(body);
+      const contentLength = Number.parseInt(req.headers['content-length'] ?? '0', 10);
+      if (contentLength > MAX_BODY_BYTES) {
+        sendJSON(res, 413, {
+          status: { state: 'failed', message: `Request body too large. Limit is ${MAX_BODY_BYTES} bytes.` },
+        });
+        return;
+      }
+
+      const body = await getBody(req, MAX_BODY_BYTES);
+      let task: A2ATaskPayload;
+      try {
+        task = JSON.parse(body) as A2ATaskPayload;
+      } catch {
+        sendJSON(res, 400, {
+          status: { state: 'failed', message: 'Invalid JSON request body' },
+        });
+        return;
+      }
       const taskId = task.id ?? `task-${Date.now()}`;
 
       // Extract patient data from task message
       const message = task.message ?? task.params ?? {};
-      const inputData = message.parts?.[0]?.data ?? message.data ?? message;
+      const inputData = (message.parts?.[0]?.data ?? message.data ?? message) as Record<string, unknown>;
 
       const sharpContext = extractSHARPHeaders(req);
 
@@ -114,6 +166,7 @@ const httpServer = createServer(async (req, res) => {
         medications: inputData.medications as FHIRMedicationRequest[] | undefined,
         observations: inputData.observations as FHIRObservation[] | undefined,
         conditions: inputData.conditions as FHIRCondition[] | undefined,
+        genotypes: inputData.genotypes as Record<string, string> | undefined,
         fhirContext: sharpContext ?? (inputData.fhirContext as FHIRContextHeaders | undefined),
       };
 
@@ -133,6 +186,12 @@ const httpServer = createServer(async (req, res) => {
       });
     } catch (err) {
       const e = err as Error;
+      if (err instanceof RequestBodyTooLargeError) {
+        sendJSON(res, 413, {
+          status: { state: 'failed', message: `Request body too large. Limit is ${err.limitBytes} bytes.` },
+        });
+        return;
+      }
       console.error(JSON.stringify({
         ts: new Date().toISOString(),
         svc: 'a2a',

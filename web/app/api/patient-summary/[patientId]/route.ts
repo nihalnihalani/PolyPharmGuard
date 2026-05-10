@@ -9,8 +9,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
   if (geminiKey) initGemini(geminiKey);
 
   // Fetch review data
-  const baseUrl = process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3001';
+  const baseUrl = process.env['NEXT_PUBLIC_APP_URL'] ?? _req.nextUrl.origin;
   const reviewRes = await fetch(`${baseUrl}/api/review/${patientId}`, { cache: 'no-store' });
+  if (!reviewRes.ok) {
+    return NextResponse.json({ error: 'Review unavailable' }, { status: 502 });
+  }
   const review = await reviewRes.json();
 
   const { systemPrompt, userPrompt } = buildPatientSummaryPrompt(

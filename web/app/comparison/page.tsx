@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 
 /**
  * Side-by-side comparison page demonstrating the "AI Factor".
@@ -27,7 +28,7 @@ interface ReviewResponse {
 }
 
 async function getReview(patientId: string): Promise<ReviewResponse | null> {
-  const baseUrl = process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3001';
+  const baseUrl = await deriveBaseUrl();
   try {
     const res = await fetch(`${baseUrl}/api/review/${patientId}`, { cache: 'no-store' });
     if (!res.ok) return null;
@@ -35,6 +36,16 @@ async function getReview(patientId: string): Promise<ReviewResponse | null> {
   } catch {
     return null;
   }
+}
+
+async function deriveBaseUrl(): Promise<string> {
+  const fromEnv = process.env['NEXT_PUBLIC_APP_URL'];
+  if (fromEnv) return fromEnv;
+  const h = await headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host');
+  const proto = h.get('x-forwarded-proto') ?? 'http';
+  if (host) return `${proto}://${host}`;
+  return 'http://localhost:3001';
 }
 
 // Hardcoded "standard pairwise checker" output for Mr. Patel.

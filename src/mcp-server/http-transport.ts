@@ -27,10 +27,26 @@ export interface HttpTransportOptions {
   port?: number;
   /** Host/interface to bind. Defaults to 0.0.0.0 (so containers work). */
   host?: string;
+  /** Browser origin allowed by CORS. Defaults to env MCP_ALLOWED_ORIGIN or *. */
+  allowedOrigin?: string;
+  /** Maximum accepted JSON-RPC request body in bytes. Defaults to 1 MiB. */
+  maxBodyBytes?: number;
   /** Override service name reported by /health. */
   serviceName?: string;
   /** Override service version reported by /health. */
   serviceVersion?: string;
+}
+
+class RequestBodyTooLargeError extends Error {
+  constructor(public readonly limitBytes: number) {
+    super(`Request body exceeds ${limitBytes} byte limit`);
+    this.name = 'RequestBodyTooLargeError';
+  }
+}
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 /**
@@ -38,28 +54,41 @@ export interface HttpTransportOptions {
  * pre-parsed body, but we let the SDK do its own JSON parsing for correctness
  * and only buffer here so we can pass the raw bytes through.
  */
-function readRequestBody(req: IncomingMessage): Promise<Buffer> {
+function readRequestBody(req: IncomingMessage, maxBodyBytes: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (chunk: Buffer) => chunks.push(chunk));
-    req.on('end', () => resolve(Buffer.concat(chunks)));
+    let totalBytes = 0;
+    let rejected = false;
+    req.on('data', (chunk: Buffer) => {
+      if (rejected) return;
+      totalBytes += chunk.length;
+      if (totalBytes > maxBodyBytes) {
+        rejected = true;
+        reject(new RequestBodyTooLargeError(maxBodyBytes));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      if (!rejected) resolve(Buffer.concat(chunks));
+    });
     req.on('error', reject);
   });
 }
 
-function writeJson(res: ServerResponse, status: number, payload: unknown): void {
+function writeJson(res: ServerResponse, status: number, payload: unknown, allowedOrigin = '*'): void {
   const body = JSON.stringify(payload);
   res.writeHead(status, {
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(body),
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': allowedOrigin,
   });
   res.end(body);
 }
 
-function writeCorsPreflight(res: ServerResponse): void {
+function writeCorsPreflight(res: ServerResponse, allowedOrigin: string): void {
   res.writeHead(204, {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers':
       'Content-Type, Mcp-Session-Id, X-FHIR-Server-URL, X-FHIR-Access-Token, X-Patient-ID, Authorization',
@@ -79,6 +108,8 @@ export async function startHttpTransport(
 ): Promise<{ close: () => Promise<void>; port: number }> {
   const port = options.port ?? parseInt(process.env['MCP_PORT'] ?? '3000', 10);
   const host = options.host ?? '0.0.0.0';
+  const allowedOrigin = options.allowedOrigin ?? process.env['MCP_ALLOWED_ORIGIN'] ?? '*';
+  const maxBodyBytes = options.maxBodyBytes ?? parsePositiveInt(process.env['MCP_MAX_BODY_BYTES'], 1024 * 1024);
   const serviceName = options.serviceName ?? 'polypharmguard';
   const serviceVersion = options.serviceVersion ?? '1.0.0';
 
@@ -102,6 +133,8 @@ export async function startHttpTransport(
     const requestId = (req.headers['x-request-id'] as string | undefined) ?? randomUUID().slice(0, 8);
     const start = Date.now();
     res.setHeader('X-Request-Id', requestId);
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    res.setHeader('Access-Control-Expose-Headers', 'Mcp-Session-Id, X-Request-Id');
     res.on('finish', () => {
       const ms = Date.now() - start;
       const line = JSON.stringify({
@@ -118,7 +151,7 @@ export async function startHttpTransport(
 
     // CORS preflight — needed for marketplace UI that probes from a browser.
     if (req.method === 'OPTIONS') {
-      writeCorsPreflight(res);
+      writeCorsPreflight(res, allowedOrigin);
       return;
     }
 
@@ -130,7 +163,7 @@ export async function startHttpTransport(
         version: serviceVersion,
         transport: 'streamable-http',
         timestamp: new Date().toISOString(),
-      });
+      }, allowedOrigin);
       return;
     }
 
@@ -144,7 +177,7 @@ export async function startHttpTransport(
           mcp: '/mcp',
           health: '/health',
         },
-      });
+      }, allowedOrigin);
       return;
     }
 
@@ -157,7 +190,17 @@ export async function startHttpTransport(
         // consuming the stream twice if the SDK retries).
         let parsedBody: unknown = undefined;
         if (req.method === 'POST') {
-          const raw = await readRequestBody(req);
+          const contentLength = Number.parseInt(req.headers['content-length'] ?? '0', 10);
+          if (contentLength > maxBodyBytes) {
+            writeJson(res, 413, {
+              jsonrpc: '2.0',
+              error: { code: -32000, message: `Request body too large. Limit is ${maxBodyBytes} bytes.` },
+              id: null,
+            }, allowedOrigin);
+            return;
+          }
+
+          const raw = await readRequestBody(req, maxBodyBytes);
           if (raw.length > 0) {
             try {
               parsedBody = JSON.parse(raw.toString('utf-8'));
@@ -166,7 +209,7 @@ export async function startHttpTransport(
                 jsonrpc: '2.0',
                 error: { code: -32700, message: 'Parse error: invalid JSON' },
                 id: null,
-              });
+              }, allowedOrigin);
               return;
             }
           }
@@ -180,6 +223,14 @@ export async function startHttpTransport(
         });
       } catch (err) {
         const e = err as Error;
+        if (err instanceof RequestBodyTooLargeError) {
+          writeJson(res, 413, {
+            jsonrpc: '2.0',
+            error: { code: -32000, message: `Request body too large. Limit is ${err.limitBytes} bytes.` },
+            id: null,
+          }, allowedOrigin);
+          return;
+        }
         console.error(JSON.stringify({
           ts: new Date().toISOString(),
           svc: 'mcp-http',
@@ -194,13 +245,13 @@ export async function startHttpTransport(
             jsonrpc: '2.0',
             error: { code: -32603, message: 'Internal error' },
             id: null,
-          });
+          }, allowedOrigin);
         }
       }
       return;
     }
 
-    writeJson(res, 404, { error: 'Not found', path: url.pathname });
+    writeJson(res, 404, { error: 'Not found', path: url.pathname }, allowedOrigin);
   });
 
   await new Promise<void>((resolve, reject) => {

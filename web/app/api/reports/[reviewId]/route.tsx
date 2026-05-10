@@ -6,9 +6,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ rev
   // Dynamically import @react-pdf/renderer (server-side only)
   const { renderToBuffer, Document, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
 
-  const baseUrl = process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3001';
+  const baseUrl = process.env['NEXT_PUBLIC_APP_URL'] ?? _req.nextUrl.origin;
   const patientId = reviewId.split('_')[1] ?? 'unknown';
   const reviewRes = await fetch(`${baseUrl}/api/review/${patientId}`, { cache: 'no-store' });
+  if (!reviewRes.ok) {
+    return NextResponse.json({ error: 'Review unavailable' }, { status: 502 });
+  }
   const review = await reviewRes.json();
 
   const styles = StyleSheet.create({

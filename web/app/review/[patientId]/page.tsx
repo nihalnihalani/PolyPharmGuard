@@ -4,12 +4,23 @@ import { EvidenceChainAccordion } from '@/components/EvidenceChainAccordion';
 import { DrugInteractionGraph } from '@/components/DrugInteractionGraph';
 import { ActionBar } from '@/components/ActionBar';
 import Link from 'next/link';
+import { headers } from 'next/headers';
 
 async function getReview(patientId: string) {
-  const baseUrl = process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3001';
+  const baseUrl = await deriveBaseUrl();
   const res = await fetch(`${baseUrl}/api/review/${patientId}`, { cache: 'no-store' });
   if (!res.ok) throw new Error('Review failed');
   return res.json();
+}
+
+async function deriveBaseUrl(): Promise<string> {
+  const fromEnv = process.env['NEXT_PUBLIC_APP_URL'];
+  if (fromEnv) return fromEnv;
+  const h = await headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host');
+  const proto = h.get('x-forwarded-proto') ?? 'http';
+  if (host) return `${proto}://${host}`;
+  return 'http://localhost:3001';
 }
 
 export default async function ReviewPage({ params }: { params: Promise<{ patientId: string }> }) {
