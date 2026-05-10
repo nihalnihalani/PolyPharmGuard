@@ -250,7 +250,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
 
   // Fetch composite risk index from the heuristic service (if available).
   // This is a transparent additive composite, NOT an ML model — see ml-service/scorer.py.
-  let riskScore = null;
+  //
+  // Service URL is configurable via RISK_SCORE_SERVICE_URL (default
+  // http://localhost:8001). The fetch is bounded by a 3-second
+  // AbortController timeout so a hung scorer doesn't block the whole review.
+  // Failure modes — connection refused, timeout, 5xx, malformed JSON — all
+  // produce a structured `riskScore: { unavailable: true, reason }` payload
+  // so the client can render a "score unavailable" badge instead of silently
+  // showing nothing.
+  const RISK_SCORE_URL = process.env['RISK_SCORE_SERVICE_URL'] ?? 'http://localhost:8001';
+  const RISK_SCORE_TIMEOUT_MS = Number.parseInt(process.env['RISK_SCORE_TIMEOUT_MS'] ?? '3000', 10);
+  let riskScore: unknown = { unavailable: true, reason: 'risk-score-not-attempted' };
   try {
     const conditionLabels = (patientData.conditions ?? [])
       .map((c: { code?: { text?: string; coding?: { display?: string }[] } }) =>
@@ -309,35 +319,59 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
       medsBlob.includes('prasugrel');
     const daptAtRisk = hasStentContext && onP2y12Prodrug && prodrugFailures > 0;
 
-    const mlResponse = await fetch('http://localhost:8001/risk-score', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Request-Id': requestId },
-      body: JSON.stringify({
-        age: patientAge,
-        egfr: recentLabs.find(o => o.loincCode === '33914-3')?.value ?? 90,
-        egfr_loinc: '33914-3',
-        medications,
-        cyp_findings: cascade.map(f => ({ severity: f.severity, finding: f.finding })),
-        pd_risk_score: pd.reduce((s, f) => s + (f.riskScore ?? 0), 0),
-        beers_count: deprescribing.filter(f => f.beersFlag).length,
-        lab_gaps: labMonitoring.filter(f => f.status !== 'CURRENT').length,
-        conditions: conditionLabels,
-        prodrug_failures: prodrugFailures,
-        residual_inhibitor_window: residualInhibitorWindow,
-        dapt_at_risk: daptAtRisk,
-      }),
-    });
-    if (mlResponse.ok) riskScore = await mlResponse.json();
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), RISK_SCORE_TIMEOUT_MS);
+    let mlResponse: Response;
+    try {
+      mlResponse = await fetch(`${RISK_SCORE_URL}/risk-score`, {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: { 'Content-Type': 'application/json', 'X-Request-Id': requestId },
+        body: JSON.stringify({
+          age: patientAge,
+          egfr: recentLabs.find(o => o.loincCode === '33914-3')?.value ?? 90,
+          egfr_loinc: '33914-3',
+          medications,
+          cyp_findings: cascade.map(f => ({ severity: f.severity, finding: f.finding })),
+          pd_risk_score: pd.reduce((s, f) => s + (f.riskScore ?? 0), 0),
+          beers_count: deprescribing.filter(f => f.beersFlag).length,
+          lab_gaps: labMonitoring.filter(f => f.status !== 'CURRENT').length,
+          conditions: conditionLabels,
+          prodrug_failures: prodrugFailures,
+          residual_inhibitor_window: residualInhibitorWindow,
+          dapt_at_risk: daptAtRisk,
+        }),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+    if (mlResponse.ok) {
+      riskScore = await mlResponse.json();
+    } else {
+      riskScore = {
+        unavailable: true,
+        reason: `risk-score-service-${mlResponse.status}`,
+        url: RISK_SCORE_URL,
+      };
+    }
   } catch (err) {
-    // Risk service not running — log and continue without score so the page
-    // still renders. The trace id makes the failure easy to correlate.
+    // Risk service not reachable / timed out / malformed response.
+    // Always return a structured `unavailable` payload so the client renders
+    // a degraded-state badge rather than a missing/null score.
+    const e = err as Error;
+    const reason = e.name === 'AbortError'
+      ? `risk-score-timeout-${RISK_SCORE_TIMEOUT_MS}ms`
+      : 'risk-score-service-down';
+    riskScore = { unavailable: true, reason, error: e.message, url: RISK_SCORE_URL };
     console.error(JSON.stringify({
       ts: new Date().toISOString(),
       svc: 'web-api',
       level: 'warn',
       reqId: requestId,
-      msg: 'ML risk-score fetch failed; continuing without score',
-      error: (err as Error).message,
+      msg: 'ML risk-score fetch failed; returning unavailable badge',
+      reason,
+      url: RISK_SCORE_URL,
+      error: e.message,
     }));
   }
 
