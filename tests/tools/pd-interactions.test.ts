@@ -93,4 +93,48 @@ describe('analyzePDInteractions', () => {
     const critical = findings.filter(f => f.severity === 'CRITICAL');
     expect(critical.length).toBe(0);
   });
+
+  // --- Pair-specific wording (item 8) ---
+
+  it('emits SSRI + antiplatelet specific wording, not generic class wording', async () => {
+    const findings = await analyzePDInteractions({
+      medications: ['sertraline 50mg', 'aspirin 81mg', 'clopidogrel 75mg'],
+    });
+    const bleeding = findings.find(f => f.class === 'BLEEDING_RISK');
+    expect(bleeding).toBeDefined();
+    // Must use pair-specific language, NOT the generic "BLEEDING_RISK ACCUMULATION" string
+    expect(bleeding!.finding).toMatch(/SSRI \+ ANTIPLATELET|DUAL ANTITHROMBOTIC/);
+    expect(bleeding!.clinicalConsequence).toMatch(/serotonin|antiplatelet/i);
+  });
+
+  it('emits NSAID + anticoagulant specific wording', async () => {
+    const findings = await analyzePDInteractions({
+      medications: ['warfarin 5mg', 'ibuprofen 600mg'],
+    });
+    const bleeding = findings.find(f => f.class === 'BLEEDING_RISK');
+    expect(bleeding).toBeDefined();
+    expect(bleeding!.finding).toMatch(/NSAID \+ ANTICOAGULANT/);
+    expect(bleeding!.recommendation).toMatch(/PPI|acetaminophen/i);
+  });
+
+  it('emits triple antithrombotic wording for anticoag + 2 antiplatelets', async () => {
+    const findings = await analyzePDInteractions({
+      medications: ['apixaban 5mg', 'aspirin 81mg', 'clopidogrel 75mg'],
+    });
+    const bleeding = findings.find(f => f.class === 'BLEEDING_RISK');
+    expect(bleeding).toBeDefined();
+    expect(bleeding!.finding).toMatch(/TRIPLE ANTITHROMBOTIC/);
+  });
+
+  it('emits cumulative QT wording when ≥2 QT-prolongers stack', async () => {
+    // Pick drugs from two distinct KB entry classes (macrolide + fluoroquinolone)
+    // so the algorithmic detector's "≥2 distinct entries" gate fires.
+    const findings = await analyzePDInteractions({
+      medications: ['azithromycin 500mg', 'ciprofloxacin 500mg', 'haloperidol 5mg'],
+    });
+    const qt = findings.find(f => f.class === 'QT_PROLONGATION');
+    expect(qt).toBeDefined();
+    expect(qt!.finding).toMatch(/CUMULATIVE QT/);
+    expect(qt!.recommendation).toMatch(/ECG|electrolyte/i);
+  });
 });
