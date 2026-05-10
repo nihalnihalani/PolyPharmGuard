@@ -11,6 +11,7 @@ import { loadMrPatelData } from '../../../../../data/synthea/mr-patel/index';
 import { FHIRClient } from '../../../../../src/fhir/client';
 import { loadPatientBundle } from '../../../../../src/fhir/queries';
 import { loadPatientGenotypes } from '../../../../../src/fhir/pgx-queries';
+import { saveReview } from '../../../../../src/persistence/reviews';
 import { createHash } from 'node:crypto';
 import type { FHIRPatient, FHIRMedicationRequest, FHIRObservation, FHIRCondition } from '../../../../../src/types/fhir';
 
@@ -412,7 +413,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
     },
   }));
 
-  return NextResponse.json({
+  // Persist immutable snapshot so reports + clinician actions reference
+  // the exact same clinical result the clinician saw. Failure is non-fatal
+  // — log + continue so the user still gets the response. The trace id
+  // makes failure correlatable with the source request.
+  const responseBody = {
     reviewId,
     patientId,
     patientName,
@@ -422,5 +427,28 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
     findings: outputs,
     toolStatus,
     timestamp: new Date().toISOString(),
-  });
+  };
+  try {
+    saveReview({
+      id: reviewId,
+      patientId,
+      createdAt: responseBody.timestamp,
+      inputs: { medications, patientAge, patientContext: { age: patientAge, egfr } },
+      outputs: { ...responseBody, dataSource },
+      scorerVersion: (riskScore as { method?: string } | null)?.method ?? 'composite_heuristic_v1',
+      appVersion: process.env['npm_package_version'] ?? '1.0.0',
+    });
+  } catch (err) {
+    console.error(JSON.stringify({
+      ts: new Date().toISOString(),
+      svc: 'web-api',
+      level: 'warn',
+      reqId: requestId,
+      msg: 'Review snapshot save failed; serving live response anyway',
+      reviewId,
+      error: (err as Error).message,
+    }));
+  }
+
+  return NextResponse.json(responseBody);
 }

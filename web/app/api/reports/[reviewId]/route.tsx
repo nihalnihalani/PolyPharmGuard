@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { loadReview } from '../../../../../src/persistence/reviews';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ reviewId: string }> }) {
   const { reviewId } = await params;
@@ -6,13 +7,39 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ rev
   // Dynamically import @react-pdf/renderer (server-side only)
   const { renderToBuffer, Document, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
 
-  const baseUrl = process.env['NEXT_PUBLIC_APP_URL'] ?? _req.nextUrl.origin;
-  const patientId = reviewId.split('_')[1] ?? 'unknown';
-  const reviewRes = await fetch(`${baseUrl}/api/review/${patientId}`, { cache: 'no-store' });
-  if (!reviewRes.ok) {
-    return NextResponse.json({ error: 'Review unavailable' }, { status: 502 });
+  // Prefer a persisted snapshot — that's the *exact* clinical result the
+  // clinician saw at review time. Fall back to a live re-fetch only when
+  // the snapshot isn't available (older reviews, or the persistence layer
+  // failed to write). Live re-fetch may differ from the snapshot if KB or
+  // scorer code has changed.
+  type ReviewFinding = { severity: string; finding?: string; clinicalConsequence?: string; recommendation?: string };
+  type ReviewPayload = {
+    findings: {
+      cascade?: ReviewFinding[];
+      pd?: ReviewFinding[];
+      pharmacogenomics?: (ReviewFinding & { consequence?: string })[];
+      dosing?: ReviewFinding[];
+      deprescribing?: ReviewFinding[];
+      labMonitoring?: ReviewFinding[];
+    };
+    medications?: string[];
+    riskScore?: { score: number; band?: string; interpretation?: string; method?: string; factors?: { name: string; weight: number; evidence: string }[]; disclaimer?: string };
+    patientName?: string;
+    patientId?: string;
+  };
+  let review: ReviewPayload;
+  const snap = loadReview(reviewId);
+  if (snap) {
+    review = snap.outputs as ReviewPayload;
+  } else {
+    const baseUrl = process.env['NEXT_PUBLIC_APP_URL'] ?? _req.nextUrl.origin;
+    const patientId = reviewId.split('_')[1] ?? 'unknown';
+    const reviewRes = await fetch(`${baseUrl}/api/review/${patientId}`, { cache: 'no-store' });
+    if (!reviewRes.ok) {
+      return NextResponse.json({ error: 'Review unavailable', code: 'NO_SNAPSHOT_AND_LIVE_FAILED' }, { status: 404 });
+    }
+    review = await reviewRes.json() as ReviewPayload;
   }
-  const review = await reviewRes.json();
 
   const styles = StyleSheet.create({
     page: { padding: 40, fontFamily: 'Helvetica', backgroundColor: '#ffffff' },
@@ -28,7 +55,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ rev
   const allFindings = [
     ...(review.findings.cascade ?? []),
     ...(review.findings.pd ?? []),
-    ...(review.findings.pharmacogenomics ?? []).map((f: { consequence?: string; clinicalConsequence?: string }) => ({
+    ...(review.findings.pharmacogenomics ?? []).map((f) => ({
       ...f,
       clinicalConsequence: f.clinicalConsequence ?? f.consequence,
     })),
@@ -83,7 +110,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ rev
             (a: { severity: string }, b: { severity: string }) =>
               (sevOrder[a.severity] ?? 9) - (sevOrder[b.severity] ?? 9)
           );
-          return sorted.map((f: { severity: string; finding: string; clinicalConsequence?: string; recommendation?: string }, i: number) => (
+          return sorted.map((f, i: number) => (
             <View key={i} style={styles.finding}>
               <Text style={styles.findingTitle}>[{f.severity}] {f.finding}</Text>
               {f.clinicalConsequence && <Text style={{ fontSize: 9 }}>{f.clinicalConsequence}</Text>}
@@ -108,7 +135,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ rev
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="polypharmguard-${patientId}-${Date.now()}.pdf"`,
+      'Content-Disposition': `attachment; filename="polypharmguard-${review.patientId ?? reviewId.split('_')[1] ?? 'unknown'}-${Date.now()}.pdf"`,
     },
   });
 }
