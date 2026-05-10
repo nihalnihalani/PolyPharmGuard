@@ -13,3 +13,4 @@ ml-service/.venv/
 ml-service/__pycache__/
 
 logs/
+*.code-workspace
