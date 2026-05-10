@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import type { DeprescribingFinding, TaperStep, PatientContext } from '../../types/clinical.js';
-import type { FHIRMedicationRequest } from '../../types/fhir.js';
+import type { FHIRMedicationRequest, FHIRCondition, FHIRObservation } from '../../types/fhir.js';
 import type { FHIRContextHeaders } from '../../types/mcp.js';
 import { analyzeWithGemini } from '../../llm/gemini.js';
 import { ensureNoFHIRCredentials } from '../../llm/guardrails.js';
@@ -12,6 +12,117 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const KB_DIR = join(__dirname, '../../knowledge-base');
+
+// ---------------------------------------------------------------------------
+// Active-indication suppression categories.
+//
+// These constants encode the clinical guard-rail that we do NOT recommend
+// deprescribing a medication when the patient has an active, documented
+// indication for it. Each category expands into substring matches against
+// the FHIR Condition .code.coding[].display + .code.text fields (lowercased).
+//
+// Maintainability principle: keep terms BROAD enough to catch real-world
+// charting variants ("post-MI", "STEMI", "NSTEMI", "ACS") but specific enough
+// to avoid false positives. When in doubt, prefer over-flagging (no suppression)
+// to under-flagging (suppress when indication is unclear) — the safety bias is
+// to keep the finding visible for clinician review.
+//
+// Specific drug-class suppression rules:
+//   - Statin + (CAD/post-MI/diabetes) → suppress (active secondary prevention)
+//   - Aspirin + (post-DES <12mo OR active CAD) → suppress
+//   - DAPT antiplatelets (clopidogrel, prasugrel, ticagrelor) + post-DES <12mo
+//     → suppress (continue per DAPT protocol)
+//   - Metformin + active diabetes + eGFR > 30 → suppress
+//   - PPI + (active GI bleed OR Barrett's OR chronic NSAID + age >65) → suppress
+//
+// Safety overrides (never suppressed):
+//   - Statin + active rhabdomyolysis lab signal (CK > 5x ULN) → still flag
+// ---------------------------------------------------------------------------
+const CAD_TERMS = [
+  'coronary artery',
+  'coronary atherosclerosis',
+  'coronary heart',
+  'ischemic heart',
+  'angina',
+  'myocardial infarction',
+  'post-mi',
+  'post mi',
+  'stemi',
+  'nstemi',
+  'acute coronary',
+  'acs',
+  'coronary stent',
+  'drug-eluting',
+  'drug eluting stent',
+  'percutaneous coronary',
+  'pci',
+  'coronary angioplasty',
+  'cabg',
+  'coronary artery bypass',
+];
+
+const DIABETES_TERMS = [
+  'diabetes mellitus',
+  'type 2 diabetes',
+  'type 1 diabetes',
+  'diabetes type',
+  'diabetic',
+  'dm type',
+  // Watch out: bare "diabetes" still matches "diabetes mellitus" via includes;
+  // we keep it last to make intent obvious for reviewers.
+  'diabetes',
+];
+
+const POST_DES_TERMS = [
+  'drug-eluting',
+  'drug eluting stent',
+  'coronary stent',
+  'percutaneous coronary intervention',
+  'pci',
+  'post-stent',
+  'post stent',
+  // ICD-10 Z95.5 display variants
+  'coronary angioplasty implant',
+  'presence of coronary',
+];
+
+const PPI_PROTECTIVE_TERMS = [
+  'gerd',
+  'gastroesophageal reflux',
+  'barrett',
+  'peptic ulcer',
+  'helicobacter',
+  'h. pylori',
+  'h pylori',
+  'erosive esophagitis',
+  'esophagitis',
+  'gastrointestinal bleed',
+  'gi bleed',
+  'upper gi bleeding',
+  'gastritis',
+  'duodenitis',
+  // Per AGS Beers, scheduled PPI > 8 weeks is OK if patient is on chronic
+  // corticosteroids or NSAIDs — also a protective indication.
+  'nsaid',
+  'corticosteroid',
+];
+
+const DAPT_DRUGS = new Set(['clopidogrel', 'prasugrel', 'ticagrelor']);
+const STATIN_DRUGS = new Set([
+  'atorvastatin', 'simvastatin', 'rosuvastatin', 'pravastatin', 'lovastatin',
+  'pitavastatin', 'fluvastatin',
+]);
+const PPI_DRUGS = new Set([
+  'omeprazole', 'lansoprazole', 'pantoprazole', 'esomeprazole', 'rabeprazole',
+  'dexlansoprazole',
+]);
+
+// Window for "recent" DES placement — DAPT guidelines (ACC/AHA 2016, updated
+// 2021) recommend a minimum 12-month DAPT after DES for ACS, 6-month for stable
+// CAD. We use 12 months as the upper bound for suppression — a clinician can
+// still de-escalate after that, but our guard against premature deprescribing
+// stops at 12 months.
+const POST_DES_SUPPRESSION_WINDOW_MONTHS = 12;
 
 interface BeersEntry {
   drug: string;
