@@ -1,0 +1,41 @@
+{
+  "_comment": "Minimal RxNorm combination-product → ingredient table. Used by parseRxNormProduct() in src/mcp-server/tools/cascade-interactions.ts to decompose combo products into their constituent ingredients so each ingredient can be matched to the CYP450 KB independently. Names are matched case-insensitively as substrings of the medication display string. RxNorm CUIs are SCD/SBD codes from RxNav as of May 2026.",
+  "_match_rules": "When a medication display string contains any of the keys (case-insensitive), it expands to the listed ingredients. Slash-separated brand/generic forms (e.g. 'Nirmatrelvir/Ritonavir') are matched on either side. Combo products NOT in this table fall through to the legacy single-ingredient parser.",
+  "products": [
+    {
+      "name": "paxlovid",
+      "aliases": ["nirmatrelvir/ritonavir", "nirmatrelvir / ritonavir", "nirmatrelvir-ritonavir"],
+      "rxnormCui": "2587902",
+      "ingredients": ["nirmatrelvir", "ritonavir"],
+      "source": "RxNav RxNorm SCD 2587902"
+    },
+    {
+      "name": "sinemet",
+      "aliases": ["carbidopa/levodopa", "carbidopa-levodopa", "carbidopa / levodopa"],
+      "rxnormCui": "1487480",
+      "ingredients": ["carbidopa", "levodopa"],
+      "source": "RxNav RxNorm SCD 1487480"
+    },
+    {
+      "name": "lisinopril/hctz",
+      "aliases": ["lisinopril-hctz", "lisinopril / hctz", "lisinopril/hydrochlorothiazide", "lisinopril-hydrochlorothiazide", "zestoretic", "prinzide"],
+      "rxnormCui": "104377",
+      "ingredients": ["lisinopril", "hydrochlorothiazide"],
+      "source": "RxNav RxNorm SCD 104377"
+    },
+    {
+      "name": "bactrim",
+      "aliases": ["sulfamethoxazole/trimethoprim", "sulfamethoxazole-trimethoprim", "smx/tmp", "smx-tmp", "septra", "co-trimoxazole", "cotrimoxazole"],
+      "rxnormCui": "10831",
+      "ingredients": ["sulfamethoxazole", "trimethoprim"],
+      "source": "RxNav RxNorm SCD 10831"
+    },
+    {
+      "name": "norco",
+      "aliases": ["hydrocodone/acetaminophen", "hydrocodone-acetaminophen", "hydrocodone / acetaminophen", "vicodin", "lortab"],
+      "rxnormCui": "856989",
+      "ingredients": ["hydrocodone", "acetaminophen"],
+      "source": "RxNav RxNorm SCD 856989"
+    }
+  ]
+}
