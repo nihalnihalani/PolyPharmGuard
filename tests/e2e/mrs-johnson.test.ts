@@ -262,9 +262,22 @@ describe('Mrs. Johnson E2E Pipeline', () => {
       // Table (risk matrix - should have all 12 meds)
       expect(Array.isArray(report.table)).toBe(true);
       expect(report.table.length).toBe(12);
+      expect(report.table[0]).toHaveProperty('pdRisk');
+      expect(report.table[0]).toHaveProperty('pgxFlag');
+      expect(report.table[0]).toHaveProperty('labGap');
 
       // Task (pharmacy review items)
       expect(Array.isArray(report.task)).toBe(true);
+
+      // Raw finding buckets expose the full six-tool orchestration surface.
+      expect(report.findings).toEqual(expect.objectContaining({
+        cascade: expect.any(Array),
+        dosing: expect.any(Array),
+        deprescribing: expect.any(Array),
+        pd: expect.any(Array),
+        pharmacogenomics: expect.any(Array),
+        labMonitoring: expect.any(Array),
+      }));
     });
   });
 });

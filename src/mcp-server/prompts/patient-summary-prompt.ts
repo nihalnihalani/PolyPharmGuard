@@ -1,10 +1,18 @@
-import type { CascadeFinding, DosingFinding, DeprescribingFinding, PDFinding, LabMonitoringFinding } from '../../types/clinical.js';
+import type {
+  CascadeFinding,
+  DosingFinding,
+  DeprescribingFinding,
+  LabMonitoringFinding,
+  PDFinding,
+  PGxFinding,
+} from '../../types/clinical.js';
 
 export function buildPatientSummaryPrompt(findings: {
   cascade?: CascadeFinding[];
   dosing?: DosingFinding[];
   deprescribing?: DeprescribingFinding[];
   pd?: PDFinding[];
+  pharmacogenomics?: PGxFinding[];
   labMonitoring?: LabMonitoringFinding[];
 }, patientName?: string): { systemPrompt: string; userPrompt: string } {
   const systemPrompt = `You are a patient advocate translating medical findings into plain language a patient can understand.
@@ -22,6 +30,7 @@ CRITICAL RULES:
     ...(findings.dosing ?? []).filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH').map(f => `DOSE CONCERN: ${f.finding} — ${f.recommendation}`),
     ...(findings.deprescribing ?? []).filter(f => f.severity !== 'LOW').map(f => `MEDICATION REVIEW: ${f.medication} — ${f.indicationStatus}`),
     ...(findings.pd ?? []).filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH').map(f => `COMBINED DRUG EFFECT: ${f.finding} — ${f.clinicalConsequence}`),
+    ...(findings.pharmacogenomics ?? []).filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH').map(f => `GENE-DRUG WARNING: ${f.finding} — ${f.consequence}`),
     ...(findings.labMonitoring ?? []).filter(f => f.status !== 'CURRENT').map(f => `MISSING TEST: ${f.drug} requires ${f.labName} — ${f.status}`),
   ];
 

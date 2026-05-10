@@ -88,10 +88,13 @@ export interface PatientContext {
 export interface RiskMatrixRow {
   medication: string;
   cascadeRisk: Severity | 'OK';
+  pdRisk: Severity | 'OK';
   renalRisk: Severity | 'OK';
   hepaticRisk: Severity | 'OK';
+  pgxFlag: boolean;
   beersFlag: boolean;
   stoppfrailFlag: boolean;
+  labGap: boolean;
 }
 
 export interface PharmacyReviewItem {

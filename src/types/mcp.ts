@@ -1,4 +1,14 @@
-import type { CascadeFinding, DosingFinding, DeprescribingFinding, TaperStep, RiskMatrixRow, PharmacyReviewItem } from './clinical.js';
+import type {
+  CascadeFinding,
+  DosingFinding,
+  DeprescribingFinding,
+  LabMonitoringFinding,
+  PDFinding,
+  PGxFinding,
+  TaperStep,
+  RiskMatrixRow,
+  PharmacyReviewItem,
+} from './clinical.js';
 import type { FHIRMedicationRequest } from './fhir.js';
 
 export interface FHIRContextHeaders {
@@ -53,4 +63,12 @@ export interface MedReviewReport {
   table: RiskMatrixRow[];
   transaction: FHIRMedicationRequest[];
   task: PharmacyReviewItem[];
+  findings: {
+    cascade: CascadeFinding[];
+    dosing: DosingFinding[];
+    deprescribing: DeprescribingFinding[];
+    pd: PDFinding[];
+    pharmacogenomics: PGxFinding[];
+    labMonitoring: LabMonitoringFinding[];
+  };
 }

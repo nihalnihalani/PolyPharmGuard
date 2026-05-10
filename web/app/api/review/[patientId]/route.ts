@@ -3,6 +3,7 @@ import { analyzeCascadeInteractions } from '../../../../../src/mcp-server/tools/
 import { checkOrganFunctionDosing } from '../../../../../src/mcp-server/tools/organ-function-dosing';
 import { screenDeprescribing } from '../../../../../src/mcp-server/tools/deprescribing-screen';
 import { analyzePDInteractions } from '../../../../../src/mcp-server/tools/pd-interactions';
+import { checkPharmacogenomics } from '../../../../../src/mcp-server/tools/pharmacogenomics';
 import { checkLabMonitoring } from '../../../../../src/mcp-server/tools/lab-monitoring';
 import { logToolCall } from '../../../../../src/audit/db';
 import { loadMrsJohnsonData } from '../../../../../data/synthea/mrs-johnson/index';
@@ -73,17 +74,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
     egfr,
   };
 
-  // Run all tools in parallel
-  const [cascade, dosing, deprescribing, pd, labMonitoring] = await Promise.all([
+  // Run all six tools in parallel. Pharmacogenomics returns no findings unless
+  // genotype data is supplied by the calling workflow.
+  const genotypes: Record<string, string> = {};
+  const [cascade, dosing, deprescribing, pd, pharmacogenomics, labMonitoring] = await Promise.all([
     analyzeCascadeInteractions({ medications, patientContext }).catch(() => []),
     checkOrganFunctionDosing({ medications, patientContext }).catch(() => []),
     screenDeprescribing({ medications, patientAge, patientContext }).catch(() => []),
     analyzePDInteractions({ medications, patientContext }).catch(() => []),
+    checkPharmacogenomics({ medications, genotypes }).catch(() => []),
     checkLabMonitoring({ medications, recentLabs }).catch(() => []),
   ]);
 
   const reviewId = `review_${patientId}_${Date.now()}`;
-  const outputs = { cascade, dosing, deprescribing, pd, labMonitoring };
+  const outputs = { cascade, dosing, deprescribing, pd, pharmacogenomics, labMonitoring };
 
   // Log to audit trail
   try {
@@ -204,6 +208,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
       dosing: dosing.length,
       deprescribing: deprescribing.length,
       pd: pd.length,
+      pharmacogenomics: pharmacogenomics.length,
       lab: labMonitoring.length,
     },
   }));

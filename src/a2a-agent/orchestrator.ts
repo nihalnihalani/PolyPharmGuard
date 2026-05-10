@@ -12,7 +12,10 @@ import type {
   CascadeFinding,
   DosingFinding,
   DeprescribingFinding,
+  LabMonitoringFinding,
   PatientContext,
+  PDFinding,
+  PGxFinding,
   TaperStep,
   RiskMatrixRow,
   PharmacyReviewItem,
@@ -21,6 +24,9 @@ import type {
 import { analyzeCascadeInteractions } from '../mcp-server/tools/cascade-interactions.js';
 import { checkOrganFunctionDosing } from '../mcp-server/tools/organ-function-dosing.js';
 import { screenDeprescribing } from '../mcp-server/tools/deprescribing-screen.js';
+import { analyzePDInteractions } from '../mcp-server/tools/pd-interactions.js';
+import { checkPharmacogenomics } from '../mcp-server/tools/pharmacogenomics.js';
+import { checkLabMonitoring } from '../mcp-server/tools/lab-monitoring.js';
 
 export interface MedReviewRequest {
   patientId?: string;
@@ -28,8 +34,16 @@ export interface MedReviewRequest {
   medications?: FHIRMedicationRequest[];
   observations?: FHIRObservation[];
   conditions?: FHIRCondition[];
+  genotypes?: Record<string, string>;
   fhirContext?: FHIRContextHeaders;
 }
+
+type RecentLab = {
+  loincCode: string;
+  value: number;
+  date: string;
+  labName: string;
+};
 
 const SEVERITY_ORDER: Record<string, number> = {
   CRITICAL: 0,
@@ -88,6 +102,29 @@ function getMedNames(medications: FHIRMedicationRequest[]): string[] {
   );
 }
 
+function getMedDisplay(medication: FHIRMedicationRequest): string {
+  return medication.medicationCodeableConcept?.coding?.[0]?.display ??
+    medication.medicationCodeableConcept?.text ??
+    'Unknown';
+}
+
+function medMatches(medicationName: string, findingDrug: string): boolean {
+  const med = medicationName.toLowerCase();
+  const drug = findingDrug.toLowerCase();
+  return med.includes(drug) || drug.includes(med.split(' ')[0] ?? med);
+}
+
+function buildRecentLabs(observations: FHIRObservation[]): RecentLab[] {
+  return observations
+    .filter(o => o.valueQuantity)
+    .map(o => ({
+      loincCode: o.code.coding?.[0]?.code ?? '',
+      value: o.valueQuantity!.value,
+      date: o.effectiveDateTime ?? '',
+      labName: o.code.text ?? o.code.coding?.[0]?.display ?? '',
+    }));
+}
+
 function buildTalkNarrative(
   patient: FHIRPatient | undefined,
   age: number | undefined,
@@ -95,7 +132,10 @@ function buildTalkNarrative(
   medications: FHIRMedicationRequest[],
   cascadeFindings: CascadeFinding[],
   dosingFindings: DosingFinding[],
-  deprescribingFindings: DeprescribingFinding[]
+  deprescribingFindings: DeprescribingFinding[],
+  pdFindings: PDFinding[],
+  pgxFindings: PGxFinding[],
+  labFindings: LabMonitoringFinding[]
 ): string {
   const patientName = patient?.name?.[0]
     ? `${patient.name[0].prefix?.[0] ?? ''} ${patient.name[0].given?.[0] ?? ''} ${patient.name[0].family ?? ''}`.trim()
@@ -111,18 +151,28 @@ function buildTalkNarrative(
   const criticalCount = [
     ...cascadeFindings.filter(f => f.severity === 'CRITICAL'),
     ...dosingFindings.filter(f => f.severity === 'CRITICAL'),
+    ...deprescribingFindings.filter(f => f.severity === 'CRITICAL'),
+    ...pdFindings.filter(f => f.severity === 'CRITICAL'),
+    ...pgxFindings.filter(f => f.severity === 'CRITICAL'),
+    ...labFindings.filter(f => f.severity === 'CRITICAL'),
   ].length;
 
   const highCount = [
     ...cascadeFindings.filter(f => f.severity === 'HIGH'),
     ...dosingFindings.filter(f => f.severity === 'HIGH'),
     ...deprescribingFindings.filter(f => f.severity === 'HIGH'),
+    ...pdFindings.filter(f => f.severity === 'HIGH'),
+    ...pgxFindings.filter(f => f.severity === 'HIGH'),
+    ...labFindings.filter(f => f.severity === 'HIGH'),
   ].length;
 
   const moderateCount = [
     ...cascadeFindings.filter(f => f.severity === 'MODERATE'),
     ...dosingFindings.filter(f => f.severity === 'MODERATE'),
     ...deprescribingFindings.filter(f => f.severity === 'MODERATE'),
+    ...pdFindings.filter(f => f.severity === 'MODERATE'),
+    ...pgxFindings.filter(f => f.severity === 'MODERATE'),
+    ...labFindings.filter(f => f.severity === 'MODERATE'),
   ].length;
 
   let narrative = `Medication review for ${patientName}${ageStr ? `, ${ageStr}` : ''}`;
@@ -134,6 +184,9 @@ function buildTalkNarrative(
   const topCascade = cascadeFindings[0];
   const topDosing = dosingFindings[0];
   const topDepresc = deprescribingFindings[0];
+  const topPD = pdFindings[0];
+  const topPGx = pgxFindings[0];
+  const topLab = labFindings[0];
 
   if (topCascade) {
     narrative += `Key cascade finding: ${topCascade.finding} — ${topCascade.clinicalConsequence}. `;
@@ -143,6 +196,15 @@ function buildTalkNarrative(
   }
   if (topDepresc) {
     narrative += `Deprescribing candidate: ${topDepresc.medication} — ${topDepresc.indicationStatus}. `;
+  }
+  if (topPD) {
+    narrative += `Key pharmacodynamic finding: ${topPD.finding} — ${topPD.clinicalConsequence}. `;
+  }
+  if (topPGx) {
+    narrative += `Key pharmacogenomics finding: ${topPGx.finding} — ${topPGx.consequence}. `;
+  }
+  if (topLab) {
+    narrative += `Key lab monitoring gap: ${topLab.finding} — ${topLab.recommendation}. `;
   }
 
   if (criticalCount === 0 && highCount === 0 && moderateCount === 0) {
@@ -158,11 +220,13 @@ function buildRiskMatrix(
   medications: FHIRMedicationRequest[],
   cascadeFindings: CascadeFinding[],
   dosingFindings: DosingFinding[],
-  deprescribingFindings: DeprescribingFinding[]
+  deprescribingFindings: DeprescribingFinding[],
+  pdFindings: PDFinding[],
+  pgxFindings: PGxFinding[],
+  labFindings: LabMonitoringFinding[]
 ): RiskMatrixRow[] {
   return medications.map(med => {
-    const medName = med.medicationCodeableConcept?.coding?.[0]?.display ??
-      med.medicationCodeableConcept?.text ?? 'Unknown';
+    const medName = getMedDisplay(med);
     const medNameLower = medName.toLowerCase();
 
     const cascadeRisk = cascadeFindings
@@ -171,15 +235,23 @@ function buildRiskMatrix(
       .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 5) - (SEVERITY_ORDER[b.severity] ?? 5))[0]
       ?.severity ?? 'OK';
 
+    const pdRisk = pdFindings
+      .filter(f => f.contributingDrugs.some(drug => medMatches(medName, drug)))
+      .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 5) - (SEVERITY_ORDER[b.severity] ?? 5))[0]
+      ?.severity ?? 'OK';
+
     const renalRisk = dosingFindings
-      .filter(f => f.medication.toLowerCase().includes(medNameLower) &&
+      .filter(f => medMatches(medName, f.medication) &&
         f.finding.toLowerCase().includes('renal'))[0]
       ?.severity ?? 'OK';
 
     const hepaticRisk = dosingFindings
-      .filter(f => f.medication.toLowerCase().includes(medNameLower) &&
+      .filter(f => medMatches(medName, f.medication) &&
         f.finding.toLowerCase().includes('hepatic'))[0]
       ?.severity ?? 'OK';
+
+    const pgxFlag = pgxFindings
+      .some(f => medMatches(medName, f.drug));
 
     const beersFlag = deprescribingFindings
       .some(f => f.medication.toLowerCase().includes(medNameLower) && !!f.beersFlag);
@@ -187,7 +259,20 @@ function buildRiskMatrix(
     const stoppfrailFlag = deprescribingFindings
       .some(f => f.medication.toLowerCase().includes(medNameLower) && !!f.stoppfrailFlag);
 
-    return { medication: medName, cascadeRisk, renalRisk, hepaticRisk, beersFlag, stoppfrailFlag };
+    const labGap = labFindings
+      .some(f => medMatches(medName, f.drug));
+
+    return {
+      medication: medName,
+      cascadeRisk,
+      pdRisk,
+      renalRisk,
+      hepaticRisk,
+      pgxFlag,
+      beersFlag,
+      stoppfrailFlag,
+      labGap,
+    };
   });
 }
 
@@ -221,7 +306,11 @@ function buildTransactions(
 
 function buildPharmacyTasks(
   cascadeFindings: CascadeFinding[],
-  dosingFindings: DosingFinding[]
+  dosingFindings: DosingFinding[],
+  deprescribingFindings: DeprescribingFinding[],
+  pdFindings: PDFinding[],
+  pgxFindings: PGxFinding[],
+  labFindings: LabMonitoringFinding[]
 ): PharmacyReviewItem[] {
   const tasks: PharmacyReviewItem[] = [];
 
@@ -243,6 +332,44 @@ function buildPharmacyTasks(
     });
   }
 
+  for (const finding of deprescribingFindings.filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH')) {
+    tasks.push({
+      urgency: finding.severity,
+      medication: finding.medication,
+      description: finding.finding,
+      recommendedAction: finding.taperPlan?.length
+        ? `Review deprescribing plan: ${finding.taperPlan.map(step => `week ${step.week}: ${step.dose}`).join('; ')}`
+        : finding.indicationStatus,
+    });
+  }
+
+  for (const finding of pdFindings.filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH')) {
+    tasks.push({
+      urgency: finding.severity,
+      medication: finding.contributingDrugs.join(' + '),
+      description: finding.finding,
+      recommendedAction: finding.recommendation,
+    });
+  }
+
+  for (const finding of pgxFindings.filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH')) {
+    tasks.push({
+      urgency: finding.severity,
+      medication: finding.drug,
+      description: finding.finding,
+      recommendedAction: finding.recommendation,
+    });
+  }
+
+  for (const finding of labFindings.filter(f => f.severity === 'CRITICAL' || f.severity === 'HIGH')) {
+    tasks.push({
+      urgency: finding.severity,
+      medication: finding.drug,
+      description: finding.finding,
+      recommendedAction: finding.recommendation,
+    });
+  }
+
   return tasks;
 }
 
@@ -250,9 +377,18 @@ export async function runMedicationReview(request: MedReviewRequest): Promise<Me
   const patientContext = buildPatientContext(request);
   const medications = request.medications ?? [];
   const medNames = getMedNames(medications);
+  const recentLabs = buildRecentLabs(request.observations ?? []);
+  const genotypes = request.genotypes ?? {};
 
-  // Run all 3 tools in parallel with graceful degradation
-  const [cascadeResult, dosingResult, deprescribingResult] = await Promise.allSettled([
+  // Run all 6 tools in parallel with graceful degradation.
+  const [
+    cascadeResult,
+    dosingResult,
+    deprescribingResult,
+    pdResult,
+    pharmacogenomicsResult,
+    labMonitoringResult,
+  ] = await Promise.allSettled([
     analyzeCascadeInteractions({
       medications: medNames,
       patientContext,
@@ -263,6 +399,19 @@ export async function runMedicationReview(request: MedReviewRequest): Promise<Me
     }),
     screenDeprescribing({
       medications: medNames,
+      patientContext,
+    }),
+    analyzePDInteractions({
+      medications: medNames,
+      patientContext,
+    }),
+    checkPharmacogenomics({
+      medications: medNames,
+      genotypes,
+    }),
+    checkLabMonitoring({
+      medications: medNames,
+      recentLabs,
       patientContext,
     }),
   ]);
@@ -286,6 +435,18 @@ export async function runMedicationReview(request: MedReviewRequest): Promise<Me
     ? deprescribingResult.value
     : [];
 
+  const pdFindings: PDFinding[] = pdResult.status === 'fulfilled'
+    ? pdResult.value
+    : [];
+
+  const pgxFindings: PGxFinding[] = pharmacogenomicsResult.status === 'fulfilled'
+    ? pharmacogenomicsResult.value
+    : [];
+
+  const labFindings: LabMonitoringFinding[] = labMonitoringResult.status === 'fulfilled'
+    ? labMonitoringResult.value
+    : [];
+
   if (cascadeResult.status === 'rejected') {
     console.error('[MedReview] Cascade analysis failed:', (cascadeResult.reason as Error).message);
   }
@@ -294,6 +455,15 @@ export async function runMedicationReview(request: MedReviewRequest): Promise<Me
   }
   if (deprescribingResult.status === 'rejected') {
     console.error('[MedReview] Deprescribing screen failed:', (deprescribingResult.reason as Error).message);
+  }
+  if (pdResult.status === 'rejected') {
+    console.error('[MedReview] PD interaction analysis failed:', (pdResult.reason as Error).message);
+  }
+  if (pharmacogenomicsResult.status === 'rejected') {
+    console.error('[MedReview] Pharmacogenomics check failed:', (pharmacogenomicsResult.reason as Error).message);
+  }
+  if (labMonitoringResult.status === 'rejected') {
+    console.error('[MedReview] Lab monitoring check failed:', (labMonitoringResult.reason as Error).message);
   }
 
   // Build 5Ts output
@@ -304,18 +474,50 @@ export async function runMedicationReview(request: MedReviewRequest): Promise<Me
     medications,
     cascadeFindings,
     dosingFindings,
-    deprescribingFindings
+    deprescribingFindings,
+    pdFindings,
+    pgxFindings,
+    labFindings
   );
 
   const template: TaperStep[][] = deprescribingFindings
     .filter(f => f.taperPlan && f.taperPlan.length > 0)
     .map(f => f.taperPlan!);
 
-  const table = buildRiskMatrix(medications, cascadeFindings, dosingFindings, deprescribingFindings);
+  const table = buildRiskMatrix(
+    medications,
+    cascadeFindings,
+    dosingFindings,
+    deprescribingFindings,
+    pdFindings,
+    pgxFindings,
+    labFindings
+  );
 
   const transaction = buildTransactions(dosingFindings, medications);
 
-  const task = buildPharmacyTasks(cascadeFindings, dosingFindings);
+  const task = buildPharmacyTasks(
+    cascadeFindings,
+    dosingFindings,
+    deprescribingFindings,
+    pdFindings,
+    pgxFindings,
+    labFindings
+  );
 
-  return { talk, template, table, transaction, task };
+  return {
+    talk,
+    template,
+    table,
+    transaction,
+    task,
+    findings: {
+      cascade: cascadeFindings,
+      dosing: dosingFindings,
+      deprescribing: deprescribingFindings,
+      pd: pdFindings,
+      pharmacogenomics: pgxFindings,
+      labMonitoring: labFindings,
+    },
+  };
 }

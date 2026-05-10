@@ -1,7 +1,7 @@
 {
   "protocolVersion": "0.2.0",
   "name": "MedReview Agent",
-  "description": "Comprehensive medication review orchestrator that analyzes polypharmacy risks through cascade interaction analysis, organ-function dose checking, and deprescribing screening. Powered by FDA CYP450 knowledge base, AGS Beers Criteria 2023, and STOPPFrail criteria. Returns 5Ts output: Talk (narrative), Template (taper plans), Table (risk matrix), Transaction (FHIR updates), Task (pharmacy review items).",
+  "description": "Comprehensive medication review orchestrator that analyzes polypharmacy risks through six clinical tools: cascade interaction analysis, pharmacodynamic interactions, pharmacogenomics, lab monitoring, organ-function dose checking, and deprescribing screening. Powered by FDA CYP450 knowledge base, CPIC/DPWG pharmacogenomics guidance, AGS Beers Criteria 2023, and STOPPFrail criteria. Returns 5Ts output: Talk (narrative), Template (taper plans), Table (risk matrix), Transaction (FHIR updates), Task (pharmacy review items).",
   "url": "http://localhost:8000",
   "version": "1.0.0",
   "preferredTransport": "JSONRPC",
@@ -16,8 +16,8 @@
     {
       "id": "medication_review",
       "name": "Full Medication Review",
-      "description": "Complete polypharmacy analysis: cascade interactions + renal/hepatic dosing + deprescribing screening with 5Ts unified output",
-      "tags": ["polypharmacy", "medication-safety", "clinical-decision-support", "deprescribing"],
+      "description": "Complete polypharmacy analysis across six tools: CYP cascades, pharmacodynamic interactions, pharmacogenomics, lab monitoring, renal/hepatic dosing, and deprescribing with 5Ts unified output",
+      "tags": ["polypharmacy", "medication-safety", "clinical-decision-support", "deprescribing", "pharmacogenomics"],
       "examples": [
         "Run a full medication review for patient with CKD Stage 4",
         "Analyze all drug interactions for 78-year-old on 12 medications",
@@ -58,6 +58,42 @@
       "examples": [
         "Screen this 78-year-old's meds against Beers 2023",
         "Suggest deprescribing candidates with taper plans"
+      ],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "pharmacodynamic_interactions",
+      "name": "Pharmacodynamic Interaction Analysis",
+      "description": "Detect additive physiologic risks such as CNS depression, QT prolongation, bleeding risk, hypotension, and hyperkalemia",
+      "tags": ["pharmacodynamics", "drug-interactions", "bleeding-risk", "qt-prolongation"],
+      "examples": [
+        "Find additive bleeding risks in this medication list",
+        "Detect combined CNS depression risk"
+      ],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "pharmacogenomics_check",
+      "name": "Pharmacogenomics Check",
+      "description": "Identify CPIC/DPWG-cited gene-drug risks from supplied CYP2D6, CYP2C19, and CYP2C9 phenotype data",
+      "tags": ["pharmacogenomics", "cpic", "dpwg", "cyp2d6", "cyp2c19"],
+      "examples": [
+        "Check clopidogrel for a CYP2C19 poor metabolizer",
+        "Check codeine for a CYP2D6 ultrarapid metabolizer"
+      ],
+      "inputModes": ["application/json"],
+      "outputModes": ["application/json"]
+    },
+    {
+      "id": "lab_monitoring_check",
+      "name": "Lab Monitoring Check",
+      "description": "Identify missing, overdue, or out-of-range safety labs required for high-risk medications",
+      "tags": ["lab-monitoring", "loinc", "warfarin", "digoxin", "lithium"],
+      "examples": [
+        "Check whether warfarin INR monitoring is current",
+        "Flag missing digoxin level monitoring"
       ],
       "inputModes": ["application/json"],
       "outputModes": ["application/json"]

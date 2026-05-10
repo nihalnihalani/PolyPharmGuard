@@ -20,6 +20,11 @@ export default async function ReviewPage({ params }: { params: Promise<{ patient
   const allFindings = [
     ...(findings.cascade ?? []).map((f: Record<string, unknown>) => ({ ...f, toolName: 'cascade' })),
     ...(findings.pd ?? []).map((f: Record<string, unknown>) => ({ ...f, toolName: 'pd' })),
+    ...(findings.pharmacogenomics ?? []).map((f: Record<string, unknown>) => ({
+      ...f,
+      clinicalConsequence: f['clinicalConsequence'] ?? f['consequence'],
+      toolName: 'pharmacogenomics',
+    })),
     ...(findings.dosing ?? []).map((f: Record<string, unknown>) => ({ ...f, toolName: 'dosing' })),
     ...(findings.deprescribing ?? []).map((f: Record<string, unknown>) => ({ ...f, toolName: 'deprescribing' })),
     ...(findings.labMonitoring ?? []).map((f: Record<string, unknown>) => ({ ...f, toolName: 'lab-monitoring' })),

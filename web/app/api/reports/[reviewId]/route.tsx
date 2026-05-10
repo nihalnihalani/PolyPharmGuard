@@ -25,6 +25,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ rev
   const allFindings = [
     ...(review.findings.cascade ?? []),
     ...(review.findings.pd ?? []),
+    ...(review.findings.pharmacogenomics ?? []).map((f: { consequence?: string; clinicalConsequence?: string }) => ({
+      ...f,
+      clinicalConsequence: f.clinicalConsequence ?? f.consequence,
+    })),
     ...(review.findings.dosing ?? []),
     ...(review.findings.deprescribing ?? []),
     ...(review.findings.labMonitoring ?? []),
