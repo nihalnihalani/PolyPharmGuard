@@ -82,8 +82,8 @@
           "timing": { "repeat": { "frequency": 2, "period": 1, "periodUnit": "d", "boundsDuration": { "value": 5, "unit": "d" } } },
           "route": { "coding": [{ "system": "http://snomed.info/sct", "code": "26643006", "display": "Oral route" }] }
         }],
-        "authoredOn": "2026-04-17",
-        "note": [{ "text": "5-day Paxlovid course completed 2026-04-22 (7 days ago). Ritonavir is a strong CYP3A4 inhibitor; clinically significant CYP3A4 inhibition persists ~3-4 days after the last dose due to mechanism-based (irreversible) inhibition." }]
+        "authoredOn": "2026-05-02",
+        "note": [{ "text": "5-day Paxlovid course completed 2026-05-07 (3 days ago, as of demo date 2026-05-10). Ritonavir is a strong CYP3A4 inhibitor; clinically significant CYP3A4 inhibition persists ~3-4 days after the last dose due to mechanism-based (irreversible) inhibition. NOTE FOR DEMO MAINTAINERS: this date must remain within ~10 days of the demo date so the residual_inhibitor_window factor fires (see web/app/api/review/[patientId]/route.ts)." }]
       }
     },
     {
