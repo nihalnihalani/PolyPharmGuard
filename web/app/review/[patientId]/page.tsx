@@ -1,9 +1,4 @@
-import { RiskScoreGauge } from '@/components/RiskScoreGauge';
-import { MedicationRiskMatrix } from '@/components/MedicationRiskMatrix';
-import { EvidenceChainAccordion } from '@/components/EvidenceChainAccordion';
-import { DrugInteractionGraph } from '@/components/DrugInteractionGraph';
-import { ActionBar } from '@/components/ActionBar';
-import Link from 'next/link';
+import { ReviewPageClient } from './ReviewPageClient';
 import { headers } from 'next/headers';
 
 async function getReview(patientId: string) {
@@ -70,132 +65,70 @@ export default async function ReviewPage({ params }: { params: Promise<{ patient
 
   const interactions = [...cascadeEdges, ...pdEdges];
 
+  // Build matrix rows server-side so the client component receives ready-to-
+  // render data. Logic moved verbatim from the inline JSX block.
+  const matrixRows = (medications as string[]).map((med: string) => {
+    const stem = med.toLowerCase().split(' ')[0];
+    const matchByMedicationField = (f: { medication?: string }) =>
+      !!f.medication && f.medication.toLowerCase().includes(stem);
+    const findingSeverityFor = <T extends { severity: string },>(
+      arr: T[] | undefined,
+      matcher: (f: T) => boolean
+    ): 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' | 'OK' => {
+      const matches = (arr ?? []).filter(matcher);
+      if (matches.length === 0) return 'OK';
+      const sevRank: Record<string, number> = { CRITICAL: 0, HIGH: 1, MODERATE: 2, LOW: 3, INFO: 4 };
+      const top = matches.sort((a, b) => (sevRank[a.severity] ?? 9) - (sevRank[b.severity] ?? 9))[0];
+      return (top.severity as 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW') ?? 'OK';
+    };
+    const dosingMatches = (findings.dosing ?? []).filter(matchByMedicationField);
+    const renalDosing = dosingMatches.filter((f: { finding?: string }) =>
+      !!f.finding && f.finding.toUpperCase().includes('RENAL')
+    );
+    const hepaticDosing = dosingMatches.filter((f: { finding?: string }) =>
+      !!f.finding && f.finding.toUpperCase().includes('HEPATIC')
+    );
+    return {
+      medication: med,
+      cascadeRisk: findingSeverityFor(
+        findings.cascade as { severity: string; finding: string }[] | undefined,
+        (f: { severity: string; finding: string }) => f.finding.toLowerCase().includes(stem) && f.severity !== 'LOW'
+      ),
+      pdRisk: findingSeverityFor(
+        findings.pd as { severity: string; contributingDrugs?: string[] }[] | undefined,
+        (f: { severity: string; contributingDrugs?: string[] }) =>
+          !!f.contributingDrugs?.some((d: string) => d.toLowerCase().includes(stem))
+      ),
+      renalRisk: findingSeverityFor(renalDosing as { severity: string; medication?: string }[], () => true),
+      hepaticRisk: findingSeverityFor(hepaticDosing as { severity: string; medication?: string }[], () => true),
+      pgxRisk: findingSeverityFor(
+        findings.pharmacogenomics as { severity: string; drug?: string }[] | undefined,
+        (f: { severity: string; drug?: string }) => !!f.drug && f.drug.toLowerCase().includes(stem)
+      ),
+      beersFlag: (findings.deprescribing ?? []).some(
+        (f: { medication?: string; beersFlag?: string | boolean }) =>
+          !!f.medication && f.medication.toLowerCase().includes(stem) && !!f.beersFlag
+      ),
+      stoppfrailFlag: (findings.deprescribing ?? []).some(
+        (f: { medication?: string; stoppfrailFlag?: string | boolean }) =>
+          !!f.medication && f.medication.toLowerCase().includes(stem) && !!f.stoppfrailFlag
+      ),
+      labGap: (findings.labMonitoring ?? []).some(
+        (f: { drug?: string }) => !!f.drug && f.drug.toLowerCase().includes(stem)
+      ),
+    };
+  });
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">{patientName ?? patientId}</h1>
-          <p className="text-gray-400 text-sm">{medications.length} medications reviewed</p>
-        </div>
-        <div className="flex gap-3">
-          <Link href={`/patient-summary/${patientId}`} className="text-sm text-blue-400 hover:underline">Patient Summary</Link>
-          <Link href={`/api/reports/${reviewId}`} className="text-sm text-gray-400 hover:underline">PDF Report</Link>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-1">
-          {riskScore ? (
-            <RiskScoreGauge
-              score={riskScore.score}
-              interpretation={riskScore.interpretation}
-              band={riskScore.band}
-              factors={riskScore.factors}
-              method={riskScore.method}
-              disclaimer={riskScore.disclaimer}
-            />
-          ) : (
-            <div className="rounded-xl border border-gray-800 p-6 text-center text-gray-500">Risk scoring unavailable</div>
-          )}
-        </div>
-        <div className="col-span-2">
-          {/* Render every medication, not just first 8 — clinicians need to
-              see the full risk picture, especially for polypharmacy patients.
-              Also surface tool-specific severity per cell so PGx, hepatic,
-              lab-monitoring, and STOPPFrail signals aren't collapsed away. */}
-          <MedicationRiskMatrix rows={(medications as string[]).map((med: string) => {
-            const stem = med.toLowerCase().split(' ')[0];
-            const matchByMedicationField = (f: { medication?: string }) =>
-              !!f.medication && f.medication.toLowerCase().includes(stem);
-            const findingSeverityFor = <T extends { severity: string },>(
-              arr: T[] | undefined,
-              matcher: (f: T) => boolean
-            ): 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' | 'OK' => {
-              const matches = (arr ?? []).filter(matcher);
-              if (matches.length === 0) return 'OK';
-              const sevRank: Record<string, number> = { CRITICAL: 0, HIGH: 1, MODERATE: 2, LOW: 3, INFO: 4 };
-              const top = matches.sort((a, b) => (sevRank[a.severity] ?? 9) - (sevRank[b.severity] ?? 9))[0];
-              return (top.severity as 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW') ?? 'OK';
-            };
-
-            const dosingMatches = (findings.dosing ?? []).filter(matchByMedicationField);
-            const renalDosing = dosingMatches.filter((f: { finding?: string }) =>
-              !!f.finding && f.finding.toUpperCase().includes('RENAL')
-            );
-            const hepaticDosing = dosingMatches.filter((f: { finding?: string }) =>
-              !!f.finding && f.finding.toUpperCase().includes('HEPATIC')
-            );
-
-            return {
-              medication: med,
-              cascadeRisk: findingSeverityFor(
-                findings.cascade as { severity: string; finding: string }[] | undefined,
-                (f: { severity: string; finding: string }) => f.finding.toLowerCase().includes(stem) && f.severity !== 'LOW'
-              ),
-              pdRisk: findingSeverityFor(
-                findings.pd as { severity: string; contributingDrugs?: string[] }[] | undefined,
-                (f: { severity: string; contributingDrugs?: string[] }) =>
-                  !!f.contributingDrugs?.some((d: string) => d.toLowerCase().includes(stem))
-              ),
-              renalRisk: findingSeverityFor(
-                renalDosing as { severity: string; medication?: string }[],
-                () => true
-              ),
-              hepaticRisk: findingSeverityFor(
-                hepaticDosing as { severity: string; medication?: string }[],
-                () => true
-              ),
-              pgxRisk: findingSeverityFor(
-                findings.pharmacogenomics as { severity: string; drug?: string }[] | undefined,
-                (f: { severity: string; drug?: string }) =>
-                  !!f.drug && f.drug.toLowerCase().includes(stem)
-              ),
-              beersFlag: (findings.deprescribing ?? []).some(
-                (f: { medication?: string; beersFlag?: string | boolean }) =>
-                  !!f.medication && f.medication.toLowerCase().includes(stem) && !!f.beersFlag
-              ),
-              stoppfrailFlag: (findings.deprescribing ?? []).some(
-                (f: { medication?: string; stoppfrailFlag?: string | boolean }) =>
-                  !!f.medication && f.medication.toLowerCase().includes(stem) && !!f.stoppfrailFlag
-              ),
-              labGap: (findings.labMonitoring ?? []).some(
-                (f: { drug?: string }) => !!f.drug && f.drug.toLowerCase().includes(stem)
-              ),
-            };
-          })} />
-        </div>
-      </div>
-
-      <DrugInteractionGraph medications={medications} interactions={interactions as { from: string; to: string; severity: string; label: string; kind: 'cascade' | 'pd' }[]} />
-
-      <div>
-        <h2 className="text-lg font-semibold text-white mb-3">
-          {allFindings.filter((f: { severity: string }) => f.severity !== 'INFO' && f.severity !== 'LOW').length} Actionable Findings
-        </h2>
-        <div className="space-y-2">
-          {allFindings
-            .filter((f: { severity: string }) => f.severity !== 'LOW' && f.severity !== 'INFO')
-            .map((finding: { finding: string; severity: string; chain?: { step: number; fact: string; source: string }[]; clinicalConsequence?: string; recommendation?: string; toolName?: string }, i: number) => (
-            <div key={i} className="rounded-lg border border-gray-800 p-4">
-              <EvidenceChainAccordion findings={[{
-                finding: finding.finding,
-                severity: finding.severity,
-                chain: finding.chain ?? [],
-                clinicalConsequence: finding.clinicalConsequence ?? '',
-                recommendation: finding.recommendation ?? '',
-                toolName: finding.toolName,
-              }]} />
-              <ActionBar
-                reviewId={reviewId}
-                findingId={`finding_${i}`}
-                findingSummary={finding.finding}
-                severity={finding.severity}
-                toolName={finding.toolName}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+    <ReviewPageClient
+      patientId={patientId}
+      patientName={patientName}
+      reviewId={reviewId}
+      medications={medications}
+      riskScore={riskScore}
+      matrixRows={matrixRows}
+      interactions={interactions as { from: string; to: string; severity: string; label: string; kind: 'cascade' | 'pd' }[]}
+      allFindings={allFindings}
+    />
   );
 }

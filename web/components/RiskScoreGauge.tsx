@@ -1,5 +1,8 @@
 'use client';
 
+import { motion } from 'framer-motion';
+import { AnimatedScore } from '@/components/AnimatedScore';
+
 export interface RiskFactor {
   name: string;
   weight: number;
@@ -59,18 +62,27 @@ export function RiskScoreGauge({
   const sortedFactors = [...factors].sort((a, b) => b.weight - a.weight);
 
   return (
-    <div className={`rounded-xl border-2 p-6 ${BG_COLORS[tone]}`}>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.97 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className={`rounded-2xl border-2 p-6 ${BG_COLORS[tone]} shadow-[0_8px_30px_rgb(0_0_0_/_0.4)]`}
+    >
       <div className="text-center">
         <p className="text-xs text-gray-400 uppercase tracking-widest mb-2">
           Composite Risk Index
         </p>
-        <div className={`text-7xl font-black ${COLORS[tone]}`}>{score}</div>
+        <div className={`font-serif-display text-7xl font-black ${COLORS[tone]}`}>
+          <AnimatedScore value={score} />
+        </div>
         <div className={`text-2xl font-semibold mt-1 ${COLORS[tone]}`}>{bandLabel}</div>
         <p className="text-gray-500 text-[11px] mt-1">out of 100 &middot; {method}</p>
         <div className="mt-4 bg-gray-800 rounded-full h-3 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-1000 ${BAR_COLORS[tone]}`}
-            style={{ width: `${Math.min(score, 100)}%` }}
+          <motion.div
+            className={`h-full rounded-full ${BAR_COLORS[tone]}`}
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min(score, 100)}%` }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
           />
         </div>
       </div>
@@ -107,6 +119,6 @@ export function RiskScoreGauge({
       <p className="mt-4 text-[10px] leading-snug text-gray-500 border-t border-gray-800 pt-3">
         {disclaimer}
       </p>
-    </div>
+    </motion.div>
   );
 }
