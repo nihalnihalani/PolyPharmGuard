@@ -142,4 +142,50 @@ describe('check_organ_function_dosing', () => {
       }
     });
   });
+
+  describe('FHIR dosageInstruction → actual daily dose math (item 10)', () => {
+    it('computes gabapentin 300mg TID → 900mg/day and surfaces the ceiling', async () => {
+      const ctx = {
+        ...mockPatientContextEgfr28,
+        medications: [{
+          resourceType: 'MedicationRequest' as const,
+          id: 'test-medreq-gaba',
+          status: 'active' as const,
+          intent: 'order' as const,
+          subject: { reference: 'Patient/test-001' },
+          medicationCodeableConcept: {
+            coding: [{ system: 'http://www.nlm.nih.gov/research/umls/rxnorm', code: '25480', display: 'Gabapentin' }],
+            text: 'Gabapentin 300mg',
+          },
+          dosageInstruction: [{
+            text: '300mg three times daily',
+            timing: { repeat: { frequency: 3, period: 1, periodUnit: 'd' } },
+            doseAndRate: [{ doseQuantity: { value: 300, unit: 'mg' } }],
+          }],
+          authoredOn: '2026-01-15',
+        }],
+      };
+      const findings = await checkOrganFunctionDosing({
+        medications: ['Gabapentin 300mg'],
+        patientContext: ctx,
+      });
+      const gaba = findings.find(f => f.medication.toLowerCase().includes('gabapentin'));
+      expect(gaba).toBeDefined();
+      expect(gaba!.actualDailyDose).toEqual({ value: 900, unit: 'mg' });
+      expect(gaba!.recommendedDailyMaxAtEgfr).toEqual({ value: 300, unit: 'mg' });
+      expect(gaba!.finding).toMatch(/900mg\/day EXCEEDS .* 300mg\/day/);
+    });
+
+    it('falls back to legacy wording when dosageInstruction is missing', async () => {
+      const findings = await checkOrganFunctionDosing({
+        medications: ['Gabapentin 300mg'],
+        patientContext: mockPatientContextEgfr28, // no medications array → no dose math
+      });
+      const gaba = findings.find(f => f.medication.toLowerCase().includes('gabapentin'));
+      expect(gaba).toBeDefined();
+      expect(gaba!.actualDailyDose).toBeUndefined();
+      // Legacy "requires attention at eGFR …" wording
+      expect(gaba!.finding).toMatch(/requires attention at eGFR/);
+    });
+  });
 });

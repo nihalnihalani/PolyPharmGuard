@@ -46,6 +46,12 @@ export interface DosingFinding {
   recommendation: string;
   source: string;
   alternative?: string;
+  // Concrete dose math when the FHIR MedicationRequest dosageInstruction
+  // is parseable. Surfacing actual vs. ceiling lets the clinician see
+  // exactly how the current order over-/under-runs the renal-adjusted
+  // dose, instead of a vague "requires attention" string.
+  actualDailyDose?: { value: number; unit: string };
+  recommendedDailyMaxAtEgfr?: { value: number; unit: string };
 }
 
 export interface TaperStep {

@@ -49,6 +49,59 @@ function normalizeDrugName(name: string): string {
   return name.toLowerCase().trim().replace(/\s*\d+\s*(mg|mcg|ml|mEq|g)\s*(daily|bid|tid|once|twice|three times)?.*/i, '').trim();
 }
 
+// ---------------------------------------------------------------------------
+// FHIR dosageInstruction → actual daily dose math
+//
+// Reads the FHIR R4 MedicationRequest.dosageInstruction[].doseAndRate[].
+// doseQuantity.value plus the timing.repeat frequency/period to compute a
+// concrete actual daily dose. Best-effort: when the dosageInstruction is
+// unparseable (free-text only, missing timing, or a tapered/PRN regimen),
+// returns undefined and the caller falls back to the qualitative finding.
+//
+// Example: gabapentin 300mg with timing.repeat = { frequency: 3, period: 1,
+// periodUnit: "d" } → 900 mg/day.
+// ---------------------------------------------------------------------------
+interface DailyDose {
+  value: number;
+  unit: string;
+}
+
+function extractDailyDose(medReq: {
+  dosageInstruction?: Array<{
+    doseAndRate?: Array<{ doseQuantity?: { value?: number; unit?: string } }>;
+    timing?: { repeat?: { frequency?: number; period?: number; periodUnit?: string } };
+  }>;
+}): DailyDose | undefined {
+  const instr = medReq.dosageInstruction?.[0];
+  if (!instr) return undefined;
+  const doseQty = instr.doseAndRate?.[0]?.doseQuantity;
+  if (!doseQty || typeof doseQty.value !== 'number') return undefined;
+  const repeat = instr.timing?.repeat;
+  if (!repeat || typeof repeat.frequency !== 'number' || typeof repeat.period !== 'number') {
+    return undefined;
+  }
+  // Convert frequency/period to per-day. "frequency: 3, period: 1, periodUnit: d" → 3/day.
+  const perPeriod = repeat.frequency / repeat.period;
+  const perDay =
+    repeat.periodUnit === 'h' ? perPeriod * 24
+    : repeat.periodUnit === 'min' ? perPeriod * 24 * 60
+    : repeat.periodUnit === 'wk' ? perPeriod / 7
+    : perPeriod; // default: per day
+  const value = Math.round(doseQty.value * perDay * 100) / 100;
+  return { value, unit: (doseQty.unit ?? 'mg').toLowerCase() };
+}
+
+// Parse a daily-max from a free-text renal dosing recommendation. Catches
+// "Max dose 300mg once daily", "Maximum 1500mg/day", "300mg/d max".
+// Returns undefined for relative or qualitative recommendations.
+function parseDailyMaxFromRecommendation(rec: string): number | undefined {
+  const m = rec.match(/(?:max(?:imum)?\s*(?:dose)?\s*|cap(?:ped)?\s*at\s*|do not exceed\s*)(\d+(?:\.\d+)?)\s*mg/i);
+  if (m) return parseFloat(m[1]);
+  const m2 = rec.match(/(\d+(?:\.\d+)?)\s*mg(?:\s*\/\s*d(?:ay)?|\s*per\s*day)?\s*(?:max|maximum|ceiling)/i);
+  if (m2) return parseFloat(m2[1]);
+  return undefined;
+}
+
 function matchDrugToDosingKB<T extends { drug: string }>(name: string, kb: T[]): T | undefined {
   const normalized = normalizeDrugName(name);
   return kb.find(entry =>
@@ -176,8 +229,33 @@ function detectAlgorithmicDosingIssues(
         const applicable = getApplicableAdjustment(renalEntry, patientContext.egfr);
         if (applicable && applicable.recommendation && !applicable.recommendation.startsWith('No dose adjustment') && !applicable.recommendation.startsWith('Standard dosing') && !applicable.recommendation.startsWith('No renal')) {
           const severity: DosingFinding['severity'] = applicable.contraindicated ? 'CRITICAL' : 'HIGH';
+
+          // Compute concrete dose math when the patient's MedicationRequest
+          // contains a parseable dosageInstruction. We look up the matching
+          // request in patientContext.medications by drug-name stem (matches
+          // the same logic used elsewhere in the tools).
+          const stem = med.toLowerCase().split(' ')[0];
+          const medReq = (patientContext.medications ?? []).find(m => {
+            const text = (m.medicationCodeableConcept?.text ?? '').toLowerCase();
+            return text.includes(stem);
+          });
+          const actualDailyDose = medReq ? extractDailyDose(medReq) : undefined;
+          const dailyMaxMg = parseDailyMaxFromRecommendation(applicable.recommendation);
+          const recommendedDailyMaxAtEgfr = dailyMaxMg !== undefined
+            ? { value: dailyMaxMg, unit: 'mg' }
+            : undefined;
+
+          // Build a concrete finding string when both numbers are available;
+          // fall back to the legacy vague wording otherwise.
+          let findingText = `RENAL DOSE ALERT: ${med} requires attention at eGFR ${patientContext.egfr} mL/min`;
+          if (actualDailyDose && recommendedDailyMaxAtEgfr) {
+            const exceeds = actualDailyDose.value > recommendedDailyMaxAtEgfr.value;
+            const verb = exceeds ? 'EXCEEDS' : 'within';
+            findingText = `RENAL DOSE ALERT: ${med} actual ${actualDailyDose.value}${actualDailyDose.unit}/day ${verb} renal-adjusted ceiling ${recommendedDailyMaxAtEgfr.value}${recommendedDailyMaxAtEgfr.unit}/day at eGFR ${patientContext.egfr} mL/min`;
+          }
+
           findings.push({
-            finding: `RENAL DOSE ALERT: ${med} requires attention at eGFR ${patientContext.egfr} mL/min`,
+            finding: findingText,
             severity,
             medication: med,
             patientEgfr: patientContext.egfr,
@@ -185,6 +263,8 @@ function detectAlgorithmicDosingIssues(
             threshold: `eGFR threshold: ${applicable.egfrRange.min ?? 0}-${applicable.egfrRange.max ?? '∞'} mL/min`,
             recommendation: applicable.recommendation,
             source: applicable.source,
+            actualDailyDose,
+            recommendedDailyMaxAtEgfr,
           });
         }
       }
