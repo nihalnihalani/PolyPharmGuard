@@ -95,6 +95,27 @@ export async function startHttpTransport(
   const httpServer = createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? `localhost:${port}`}`);
 
+    // Per-request structured log: stable request id (propagated from upstream
+    // via X-Request-Id when present, generated otherwise), method, path,
+    // status, duration. Logged on response 'finish' so we capture the final
+    // status code even when the MCP SDK writes the response itself.
+    const requestId = (req.headers['x-request-id'] as string | undefined) ?? randomUUID().slice(0, 8);
+    const start = Date.now();
+    res.setHeader('X-Request-Id', requestId);
+    res.on('finish', () => {
+      const ms = Date.now() - start;
+      const line = JSON.stringify({
+        ts: new Date().toISOString(),
+        svc: 'mcp-http',
+        reqId: requestId,
+        method: req.method,
+        path: url.pathname,
+        status: res.statusCode,
+        durMs: ms,
+      });
+      console.error(line);
+    });
+
     // CORS preflight — needed for marketplace UI that probes from a browser.
     if (req.method === 'OPTIONS') {
       writeCorsPreflight(res);
@@ -158,7 +179,16 @@ export async function startHttpTransport(
           await transport.handleRequest(req, res, parsedBody);
         });
       } catch (err) {
-        console.error('[MCP-HTTP] handleRequest failed:', err);
+        const e = err as Error;
+        console.error(JSON.stringify({
+          ts: new Date().toISOString(),
+          svc: 'mcp-http',
+          level: 'error',
+          reqId: requestId,
+          msg: 'handleRequest failed',
+          error: e.message,
+          stack: e.stack,
+        }));
         if (!res.headersSent) {
           writeJson(res, 500, {
             jsonrpc: '2.0',

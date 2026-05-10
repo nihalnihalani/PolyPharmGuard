@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -49,6 +50,22 @@ function extractSHARPHeaders(req: IncomingMessage): FHIRContextHeaders | null {
 
 const httpServer = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
+
+  // Per-request structured log (matches mcp-http format) — see http-transport.ts
+  const requestId = (req.headers['x-request-id'] as string | undefined) ?? randomUUID().slice(0, 8);
+  const start = Date.now();
+  res.setHeader('X-Request-Id', requestId);
+  res.on('finish', () => {
+    console.error(JSON.stringify({
+      ts: new Date().toISOString(),
+      svc: 'a2a',
+      reqId: requestId,
+      method: req.method,
+      path: url.pathname,
+      status: res.statusCode,
+      durMs: Date.now() - start,
+    }));
+  });
 
   // CORS preflight
   if (req.method === 'OPTIONS') {
@@ -115,9 +132,18 @@ const httpServer = createServer(async (req, res) => {
         }],
       });
     } catch (err) {
-      console.error('[A2A] Task processing error:', err);
+      const e = err as Error;
+      console.error(JSON.stringify({
+        ts: new Date().toISOString(),
+        svc: 'a2a',
+        level: 'error',
+        reqId: requestId,
+        msg: 'task processing error',
+        error: e.message,
+        stack: e.stack,
+      }));
       sendJSON(res, 500, {
-        status: { state: 'failed', message: (err as Error).message },
+        status: { state: 'failed', message: e.message },
       });
     }
     return;

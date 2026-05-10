@@ -11,3 +11,5 @@ __pycache__/
 *.pyo
 ml-service/.venv/
 ml-service/__pycache__/
+
+logs/

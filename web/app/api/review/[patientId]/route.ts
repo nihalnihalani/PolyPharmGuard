@@ -28,6 +28,10 @@ function loadPatientByID(patientId: string) {
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ patientId: string }> }) {
   const { patientId } = await params;
   const start = Date.now();
+  // Stable request id for cross-service tracing — propagated to ML scorer
+  // via X-Request-Id and echoed in the response so client/log correlation is
+  // possible without sticky sessions.
+  const requestId = (_req.headers.get('x-request-id') ?? createHash('sha256').update(`${patientId}-${start}`).digest('hex').slice(0, 8));
 
   // For demo: dispatch synthetic patients by ID.
   // In production: fetch from FHIR server using patientId.
@@ -158,7 +162,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
 
     const mlResponse = await fetch('http://localhost:8001/risk-score', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Request-Id': requestId },
       body: JSON.stringify({
         age: patientAge,
         egfr: recentLabs.find(o => o.loincCode === '33914-3')?.value ?? 90,
@@ -175,14 +179,41 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
       }),
     });
     if (mlResponse.ok) riskScore = await mlResponse.json();
-  } catch {
-    // Risk service not running — continue without score
+  } catch (err) {
+    // Risk service not running — log and continue without score so the page
+    // still renders. The trace id makes the failure easy to correlate.
+    console.error(JSON.stringify({
+      ts: new Date().toISOString(),
+      svc: 'web-api',
+      level: 'warn',
+      reqId: requestId,
+      msg: 'ML risk-score fetch failed; continuing without score',
+      error: (err as Error).message,
+    }));
   }
+
+  console.error(JSON.stringify({
+    ts: new Date().toISOString(),
+    svc: 'web-api',
+    reqId: requestId,
+    method: 'GET',
+    path: `/api/review/${patientId}`,
+    status: 200,
+    durMs: Date.now() - start,
+    findingCounts: {
+      cascade: cascade.length,
+      dosing: dosing.length,
+      deprescribing: deprescribing.length,
+      pd: pd.length,
+      lab: labMonitoring.length,
+    },
+  }));
 
   return NextResponse.json({
     reviewId,
     patientId,
     patientName,
+    requestId,
     medications,
     riskScore,
     findings: outputs,
