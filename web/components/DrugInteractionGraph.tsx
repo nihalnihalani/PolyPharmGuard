@@ -24,6 +24,18 @@ interface DrugInteractionGraphProps {
   interactions: Interaction[];
 }
 
+// Mirror of normalizeDrugName in src/mcp-server/tools/cascade-interactions.ts.
+// Edge endpoints come from the API as already-normalized strings (e.g.
+// "potassium chloride"), so node ids must derive from the same normalization
+// or Cytoscape throws "edge references nonexistent target" for multi-word meds.
+function normalizeDrugId(med: string): string {
+  return med
+    .toLowerCase()
+    .trim()
+    .replace(/\s*\d+\s*(mg|mcg|ml|meq|g)\s*(daily|bid|tid|once|twice|three times)?.*/i, '')
+    .trim();
+}
+
 export function DrugInteractionGraph({ medications, interactions }: DrugInteractionGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
@@ -36,22 +48,30 @@ export function DrugInteractionGraph({ medications, interactions }: DrugInteract
 
       const nodes: NodeDefinition[] = medications.map(med => ({
         data: {
-          id: med.toLowerCase().split(' ')[0],
-          label: med.split(' ')[0],
+          id: normalizeDrugId(med),
+          label: normalizeDrugId(med),
         },
       }));
 
-      const edges: EdgeDefinition[] = interactions.map((int, i) => ({
-        data: {
-          id: `e${i}`,
-          source: int.from.toLowerCase(),
-          target: int.to.toLowerCase(),
-          label: int.label,
-          severity: int.severity,
-          kind: int.kind ?? 'pd',
-          lineColor: EDGE_COLORS[int.severity] ?? EDGE_COLORS.LOW,
-        },
-      }));
+      const edges: EdgeDefinition[] = interactions
+        .map((int, i) => ({
+          data: {
+            id: `e${i}`,
+            source: normalizeDrugId(int.from),
+            target: normalizeDrugId(int.to),
+            label: int.label,
+            severity: int.severity,
+            kind: int.kind ?? 'pd',
+            lineColor: EDGE_COLORS[int.severity] ?? EDGE_COLORS.LOW,
+          },
+        }))
+        // Drop edges whose endpoints aren't in the node set (e.g. when a
+        // contributing drug isn't in the rendered medication list). Cytoscape
+        // throws otherwise.
+        .filter(e => {
+          const ids = new Set(nodes.map(n => n.data.id));
+          return ids.has(e.data.source as string) && ids.has(e.data.target as string);
+        });
 
       cyRef.current = cytoscape({
         container: containerRef.current,
