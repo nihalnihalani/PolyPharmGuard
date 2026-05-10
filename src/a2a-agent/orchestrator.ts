@@ -275,6 +275,7 @@ export async function runMedicationReview(request: MedReviewRequest): Promise<Me
         chain: [],
         clinicalConsequence: 'Unable to complete cascade analysis.',
         recommendation: 'Manual pharmacist review recommended.',
+        source: 'PolyPharmGuard MedReview agent — cascade tool error fallback',
       }];
 
   const dosingFindings: DosingFinding[] = dosingResult.status === 'fulfilled'

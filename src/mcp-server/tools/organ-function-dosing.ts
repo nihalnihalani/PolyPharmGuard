@@ -163,6 +163,7 @@ function detectAlgorithmicDosingIssues(
       medication: 'All medications',
       threshold: 'N/A',
       recommendation: 'Obtain eGFR and liver function tests to enable organ-function dosing assessment.',
+      source: 'PolyPharmGuard organ-function dosing tool — patient-context coverage gap (no eGFR/LFT FHIR Observations available)',
     });
     return findings;
   }
@@ -183,6 +184,7 @@ function detectAlgorithmicDosingIssues(
             egfrSource: 'FHIR Observation (LOINC: 33914-3)',
             threshold: `eGFR threshold: ${applicable.egfrRange.min ?? 0}-${applicable.egfrRange.max ?? '∞'} mL/min`,
             recommendation: applicable.recommendation,
+            source: applicable.source,
           });
         }
       }
@@ -205,6 +207,7 @@ function detectAlgorithmicDosingIssues(
               medication: med,
               threshold: `${hepaticAssessment.label} ${hepaticAssessment.category} — ${hepaticAssessment.basis}${hepaticAssessment.disclaimer ? ' (' + hepaticAssessment.disclaimer + ')' : ''}`,
               recommendation: hepaticRec.recommendation,
+              source: hepaticRec.source,
             });
           }
         }
@@ -280,6 +283,13 @@ export async function checkOrganFunctionDosing(input: {
     if (!isDuplicate) merged.push(llmFinding);
   }
   const findings = merged;
+
+  // Backfill source on any LLM-parsed finding that didn't include one — schema requires it.
+  for (const f of findings) {
+    if (!f.source || typeof f.source !== 'string' || f.source.trim() === '') {
+      f.source = 'Gemini organ-function dosing analysis grounded on FDA renal/hepatic dosing KB';
+    }
+  }
 
   return findings.sort((a, b) =>
     (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99)

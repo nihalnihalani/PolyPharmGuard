@@ -208,6 +208,17 @@ function getAlgorithmicDeprescribingFindings(
 
     const durationStr = durationWeeks !== undefined ? `${durationWeeks} weeks` : undefined;
 
+    // Compose top-level source from whichever guideline(s) actually fired —
+    // satisfies the "every finding cites a source" rule for downstream reports.
+    const sourceCitations = [
+      beersMatch?.source,
+      stoppMatch?.source,
+    ].filter((s): s is string => typeof s === 'string' && s.trim() !== '');
+    const composedSource =
+      sourceCitations.length > 0
+        ? sourceCitations.join(' + ')
+        : 'PolyPharmGuard duration/indication review (FHIR MedicationRequest authoredOn vs. FHIR Condition coverage)';
+
     findings.push({
       finding: `DEPRESCRIBING CANDIDATE: ${med}`,
       severity,
@@ -218,6 +229,7 @@ function getAlgorithmicDeprescribingFindings(
         beersMatch ? `AGS 2023 Beers Criteria: ${beersMatch.recommendation}` : '',
         stoppMatch ? `STOPPFrail: ${stoppMatch.recommendation}` : '',
       ].filter(Boolean).join(' | ') || 'Duration/indication review',
+      source: composedSource,
       beersFlag,
       stoppfrailFlag,
       taperPlan,
@@ -307,6 +319,13 @@ export async function screenDeprescribing(input: {
     if (!isDuplicate) merged.push(llmFinding);
   }
   const findings = merged;
+
+  // Backfill source on any LLM-parsed finding that didn't include one — schema requires it.
+  for (const f of findings) {
+    if (!f.source || typeof f.source !== 'string' || f.source.trim() === '') {
+      f.source = 'Gemini deprescribing analysis grounded on AGS 2023 Beers + STOPPFrail KBs';
+    }
+  }
 
   return findings.sort((a, b) =>
     (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99)

@@ -28,6 +28,10 @@ export interface CascadeFinding {
   chain: CascadeChainStep[];
   clinicalConsequence: string;
   recommendation: string;
+  // Top-level provenance for the finding as a whole. Per the project's
+  // "every clinical assertion cites a source" rule, every finding must carry
+  // a single citable source string in addition to per-step chain sources.
+  source: string;
   faersSignal?: string;
   contributingDrugs?: string[];
 }
@@ -40,6 +44,7 @@ export interface DosingFinding {
   egfrSource?: string;
   threshold: string;
   recommendation: string;
+  source: string;
   alternative?: string;
 }
 
@@ -55,6 +60,7 @@ export interface DeprescribingFinding {
   duration?: string;
   indicationStatus: string;
   guideline: string;
+  source: string;
   beersFlag?: string;
   stoppfrailFlag?: string;
   taperPlan?: TaperStep[];

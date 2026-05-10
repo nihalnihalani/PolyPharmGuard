@@ -247,6 +247,10 @@ function detectAlgorithmicCascades(
           });
         }
 
+        const primarySource = isProdrug
+          ? `${inhibition.source}; FDA Black Box Warning (clopidogrel + CYP2C19 inhibitors, 2010)`
+          : inhibition.source;
+
         const finding: CascadeFinding = isProdrug
           ? {
               finding: `${enzyme} INHIBITION → REDUCED active metabolite of ${substrateMed.name}: ${inhibitorMed.name} blocks ${enzyme} activation of ${substrateMed.name} prodrug → loss of therapeutic efficacy`,
@@ -257,6 +261,7 @@ function detectAlgorithmicCascades(
                   ? `Antiplatelet/therapeutic efficacy COMPROMISED — ${substrateMed.name} cannot be activated. ${hasStentContext ? 'In post-DES/DAPT patients this is stent thrombosis risk. ' : ''}FDA Black Box Warning (clopidogrel + CYP2C19 inhibitors, 2010).`
                   : `Antiplatelet/therapeutic efficacy COMPROMISED — ${substrateMed.name} cannot be activated by ${enzyme}. ${hasStentContext ? 'In post-DES/DAPT patients this is stent thrombosis risk. ' : ''}FDA Black Box Warning (clopidogrel + CYP2C19 inhibitors, 2010).`,
               recommendation: `Switch ${inhibitorMed.name} to a non-${enzyme} alternative (e.g., for fluvoxamine/CYP2C19 → sertraline or escitalopram). Continue ${substrateMed.name} at current dose. Do NOT reduce ${substrateMed.name} — the problem is underactivation, not toxicity.`,
+              source: primarySource,
               contributingDrugs: [inhibitorMed.normalized, substrateMed.normalized],
             }
           : {
@@ -265,6 +270,7 @@ function detectAlgorithmicCascades(
               chain,
               clinicalConsequence: `Elevated ${substrateMed.name} plasma levels due to ${enzyme} inhibition by ${inhibitorMed.name}. Risk of ${substrateMed.name}-associated toxicity.`,
               recommendation: `Monitor for ${substrateMed.name} toxicity. Consider reducing ${substrateMed.name} dose or switching to an alternative not metabolized by ${enzyme}.`,
+              source: primarySource,
               contributingDrugs: [inhibitorMed.normalized, substrateMed.normalized],
             };
 
@@ -351,7 +357,16 @@ export async function analyzeCascadeInteractions(input: {
       chain: [],
       clinicalConsequence: 'Cannot assess CYP450 interactions for these medications without knowledge base data.',
       recommendation: 'Consult clinical pharmacology resources for these medications.',
+      source: 'PolyPharmGuard CYP450 knowledge base coverage gap (no FDA Drug Interactions Table entry for the listed drug)',
     });
+  }
+
+  // Backfill source for any LLM-parsed finding that didn't include one — the
+  // schema in clinical.ts requires a top-level source on every finding.
+  for (const f of findings) {
+    if (!f.source || typeof f.source !== 'string' || f.source.trim() === '') {
+      f.source = 'Gemini cascade analysis grounded on PolyPharmGuard CYP450 KB';
+    }
   }
 
   // Validate output
