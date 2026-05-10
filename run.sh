@@ -15,11 +15,12 @@
 # user click can be traced web-api → ml-scorer.
 #
 # Usage:
-#   ./run.sh              # boot everything, stream logs (Ctrl-C to stop)
-#   ./run.sh --no-tail    # boot in background, return prompt, keep services up
-#   ./run.sh --status     # check what's running on the expected ports
-#   ./run.sh --stop       # kill anything on the expected ports
-#   ./run.sh --help       # this message
+#   ./run.sh                # boot everything, stream logs (Ctrl-C to stop)
+#   ./run.sh --no-tail      # boot in background, return prompt, keep services up
+#   ./run.sh --status       # check what's running on the expected ports
+#   ./run.sh --stop         # kill anything on the expected ports
+#   ./run.sh --logs <reqId> # grep all four service logs for a single trace id
+#   ./run.sh --help         # this message
 #
 # Compatible with macOS default bash 3.2 (no associative arrays).
 
@@ -194,10 +195,59 @@ print_summary() {
   echo ""
   printf "  Open the demo:  ${BOLD}http://127.0.0.1:3001/batch${RESET}\n"
   echo ""
-  printf "  Per-service logs: %s/{ml,mcp,a2a,web}.log\n" "${LOG_DIR}"
-  printf "  HTTP logs are JSON-per-line with a stable reqId for tracing.\n"
-  printf "  Example:  tail -f logs/web.log | grep -E '\"reqId\"'\n"
+  printf "  ${BOLD}Active features${RESET}\n"
+  printf "    • Review snapshots persisted to data/audit.db (idempotent on reviewId)\n"
+  printf "    • SHARP-on-FHIR hydration when X-FHIR-Server-URL header present;\n"
+  printf "      synthea fixtures otherwise; 404 for unknown patient IDs\n"
+  printf "    • PGx genotypes ingested from FHIR Observations when SHARP context present\n"
+  printf "    • Risk-score: 3s timeout, structured 'unavailable' badge on failure\n"
   echo ""
+  printf "  ${BOLD}Tunable env (all optional)${RESET}\n"
+  printf "    RISK_SCORE_SERVICE_URL    default http://localhost:8001\n"
+  printf "    RISK_SCORE_TIMEOUT_MS     default 3000\n"
+  printf "    FHIR_REQUEST_TIMEOUT_MS   default 5000\n"
+  echo ""
+  printf "  ${BOLD}Logs + tracing${RESET}\n"
+  printf "    Per-service logs: %s/{ml,mcp,a2a,web}.log\n" "${LOG_DIR}"
+  printf "    HTTP logs are JSON-per-line with a stable reqId.\n"
+  printf "    Trace one request across services:  ${BOLD}./run.sh --logs <reqId>${RESET}\n"
+  printf "    Tail one service:                   tail -f logs/web.log | grep '\"reqId\"'\n"
+  echo ""
+}
+
+# Grep every service log for a single trace id and print matches in time
+# order, prefixed with the colored service name. Useful when investigating a
+# specific user click that touched web → ml (or web → mcp/a2a in future).
+grep_trace() {
+  local reqId="$1"
+  if [ -z "$reqId" ]; then
+    die "Usage: ./run.sh --logs <reqId>"
+  fi
+  printf "%sTracing reqId %s%s%s across all service logs%s\n\n" \
+    "${BOLD}" "${RED}" "$reqId" "${RESET}${BOLD}" "${RESET}"
+  local found_any=false
+  for entry in "${SERVICES[@]}"; do
+    IFS='|' read -r name _ _ _ <<<"$entry"
+    local logf="${LOG_DIR}/${name}.log"
+    [ -f "$logf" ] || continue
+    local color
+    color=$(color_for "$name")
+    # Use grep -F for fixed-string match (reqIds aren't regexes); -h to drop
+    # the filename prefix since we add our own colored tag.
+    local matches
+    matches=$(grep -F "$reqId" "$logf" 2>/dev/null || true)
+    if [ -n "$matches" ]; then
+      found_any=true
+      while IFS= read -r line; do
+        printf "%s[%-3s]%s %s\n" "$color" "$name" "${RESET}" "$line"
+      done <<<"$matches"
+    fi
+  done
+  if [ "$found_any" = false ]; then
+    printf "  %sNo matches.%s Either the request id is wrong, the request hasn't\n" "${RED}" "${RESET}"
+    printf "  flushed yet, or it was served before the current log files were created.\n"
+    exit 1
+  fi
 }
 
 #───────────────────────────────────────────────────────────────────────────
@@ -237,6 +287,10 @@ case "${1:-up}" in
     done
     exit 0
     ;;
+  --logs|logs)
+    grep_trace "${2:-}"
+    exit 0
+    ;;
 esac
 
 NO_TAIL=false
@@ -257,6 +311,15 @@ command -v lsof >/dev/null   || die "lsof not found on PATH"
 [ -d "${REPO_ROOT}/web/node_modules" ]  || die "Run 'npm install' in ./web first"
 python3 -c 'import fastapi, uvicorn, pydantic' 2>/dev/null \
   || die "ML deps missing — run 'pip install -r ml-service/requirements.txt'"
+
+# Audit DB writability check. The web review API persists every review
+# snapshot here (src/persistence/reviews.ts); if the directory isn't
+# writable, the first request fails with a confusing SQLite error rather
+# than the clean pre-flight message we surface here.
+mkdir -p "${REPO_ROOT}/data" 2>/dev/null || true
+if ! ( touch "${REPO_ROOT}/data/.run-sh-write-probe" 2>/dev/null && rm -f "${REPO_ROOT}/data/.run-sh-write-probe" ); then
+  die "data/ is not writable — review snapshots and audit log can't persist. Check permissions on ${REPO_ROOT}/data"
+fi
 
 trap cleanup INT TERM
 
