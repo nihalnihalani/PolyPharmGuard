@@ -71,7 +71,15 @@ function substrateHasRenalClearance(
     if (!appliesAtSevere) return false;
     if (adj.contraindicated) return true;
     const rec = adj.recommendation.toLowerCase();
-    if (rec.startsWith('no renal') || rec.startsWith('no dose adjustment') || rec.startsWith('standard dosing')) {
+    // Skip recommendations that explicitly say no clearance-based adjustment is
+    // needed. Catches "No renal dose adjustment", "No dose adjustment required",
+    // "Standard dosing", "No formal dose adjustment based on eGFR", and
+    // hepatically-metabolized phrasings that describe other risks (myopathy,
+    // sensitivity) without claiming kidney-clearance amplification.
+    if (
+      /^(no renal|no dose adjustment|no formal|standard dosing|standard dose|standard doses)/.test(rec) ||
+      /hepatically metabolized/.test(rec)
+    ) {
       return false;
     }
     return true;
