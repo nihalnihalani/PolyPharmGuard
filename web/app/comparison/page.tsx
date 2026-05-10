@@ -125,7 +125,7 @@ export default async function ComparisonPage() {
                 <li className="flex gap-2">
                   <span className="text-gray-700">•</span>
                   <span>
-                    Compound CYP3A4 inhibition (residual ritonavir + fluvoxamine) — pair-table can't model
+                    Compound CYP3A4 inhibition (residual ritonavir + fluvoxamine) — pair-table cannot model
                     additive enzyme load
                   </span>
                 </li>

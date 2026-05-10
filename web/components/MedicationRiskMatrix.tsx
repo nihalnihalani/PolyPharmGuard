@@ -1,5 +1,3 @@
-import { Badge } from '@/components/ui/badge';
-
 type SeverityOrOk = 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' | 'OK' | 'INFO';
 
 interface MatrixRow {

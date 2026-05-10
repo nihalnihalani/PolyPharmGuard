@@ -62,7 +62,7 @@ export default function MrPatelCasePage() {
       <section className="rounded-xl border border-red-900/40 bg-gradient-to-b from-red-950/10 to-gray-950/50 p-6">
         <h2 className="text-lg font-semibold text-white mb-3">Why this case demonstrates the AI Factor</h2>
         <p className="text-sm text-gray-300 leading-relaxed mb-4">
-          Mr. Patel's renal and hepatic function are normal. There is no eGFR-driven contraindication
+          Mr. Patel&apos;s renal and hepatic function are normal. There is no eGFR-driven contraindication
           to flag. What makes this regimen dangerous is a <span className="text-white font-medium">three-step CYP cascade</span> that no
           pairwise drug-interaction table contains:
         </p>

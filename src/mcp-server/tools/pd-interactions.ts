@@ -28,8 +28,7 @@ function matchDrugsToPDEntries(medications: string[], kb: PDInteractionEntry[]):
 
 function detectAlgorithmicPDInteractions(
   medications: string[],
-  kb: PDInteractionEntry[],
-  patientContext: PatientContext | null
+  kb: PDInteractionEntry[]
 ): PDFinding[] {
   const findings: PDFinding[] = [];
   const normalizedMeds = medications.map(normalizeDrug);
@@ -91,7 +90,7 @@ export async function analyzePDInteractions(input: {
 
   const kb = loadPDKB();
   const relevantEntries = matchDrugsToPDEntries(medications, kb);
-  const algorithmicFindings = detectAlgorithmicPDInteractions(medications, relevantEntries, patientContext);
+  const algorithmicFindings = detectAlgorithmicPDInteractions(medications, relevantEntries);
 
   if (relevantEntries.length === 0) return algorithmicFindings;
 

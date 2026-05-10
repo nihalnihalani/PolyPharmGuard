@@ -1,12 +1,12 @@
 // No /g flag on these — global regex patterns with /g are stateful (lastIndex mutates
 // between .test() calls), which causes every other call to return false even when
 // credentials are present, creating a credential-leak vulnerability.
-const BEARER_TOKEN_PATTERN = /Bearer\s+[A-Za-z0-9._~+/\-]+=*/;
+const BEARER_TOKEN_PATTERN = /Bearer\s+[A-Za-z0-9._~+/-]+=*/;
 const URL_WITH_CREDENTIALS_PATTERN = /https?:\/\/[^:@\s]+:[^@\s]+@[^\s]*/;
 const JWT_PATTERN = /ey[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/;
 const LONG_TOKEN_PATTERN = /ey[A-Za-z0-9_-]{50,}/;
 // Replace patterns keep /g so all occurrences are substituted in a single pass
-const BEARER_TOKEN_REPLACE = /Bearer\s+[A-Za-z0-9._~+/\-]+=*/g;
+const BEARER_TOKEN_REPLACE = /Bearer\s+[A-Za-z0-9._~+/-]+=*/g;
 const URL_WITH_CREDENTIALS_REPLACE = /https?:\/\/[^:@\s]+:[^@\s]+@[^\s]*/g;
 const JWT_REPLACE = /ey[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g;
 const LONG_TOKEN_REPLACE = /ey[A-Za-z0-9_-]{50,}/g;

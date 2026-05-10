@@ -21,7 +21,7 @@ export function ActionBar({ reviewId, findingId, findingSummary, severity, drug,
     await fetch('/api/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reviewId, findingId, action: act, reason, clinicianId, severity, drug, toolName }),
+      body: JSON.stringify({ reviewId, findingId, findingSummary, action: act, reason, clinicianId, severity, drug, toolName }),
     });
     setAction(act);
     setStatus('done');

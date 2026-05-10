@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import type { DeprescribingFinding, TaperStep, PatientContext } from '../../types/clinical.js';
+import type { FHIRMedicationRequest } from '../../types/fhir.js';
 import type { FHIRContextHeaders } from '../../types/mcp.js';
 import { analyzeWithGemini } from '../../llm/gemini.js';
 import { ensureNoFHIRCredentials } from '../../llm/guardrails.js';
@@ -242,7 +243,7 @@ function getAlgorithmicDeprescribingFindings(
 const SEVERITY_ORDER: Record<string, number> = { CRITICAL: 0, HIGH: 1, MODERATE: 2, LOW: 3, INFO: 4 };
 
 export async function screenDeprescribing(input: {
-  medications: Array<string | { name?: string; display?: string }> | any[];
+  medications: Array<string | FHIRMedicationRequest | { name?: string; display?: string; authoredOn?: string }>;
   patientContext?: PatientContext | null;
   fhirContext?: FHIRContextHeaders;
   patientAge?: number;
@@ -259,7 +260,12 @@ export async function screenDeprescribing(input: {
         medNames.push(med);
         medRequests.push({});
       } else if (med && typeof med === 'object') {
-        const fhirMed = med as any;
+        const fhirMed = med as {
+          medicationCodeableConcept?: { coding?: Array<{ display?: string }>; text?: string };
+          name?: string;
+          display?: string;
+          authoredOn?: string;
+        };
         const display = fhirMed.medicationCodeableConcept?.coding?.[0]?.display ??
                         fhirMed.medicationCodeableConcept?.text ??
                         fhirMed.name ?? 'Unknown';

@@ -123,9 +123,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
 
     // Residual inhibitor window: any MedicationRequest with Paxlovid /
     // nirmatrelvir / ritonavir whose status is "completed" and authoredOn is
-    // within the last 5 days. Mechanism-based CYP3A4 inhibition persists ~3-4
-    // days after the last dose (FDA Paxlovid label).
-    const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
+    // within the last ~10 days. Mechanism-based CYP3A4 inhibition persists
+    // ~3-4 days after a typical 5-day Paxlovid course (FDA Paxlovid label).
     const now = Date.now();
     const residualInhibitorWindow = (patientData.medications ?? []).some(m => {
       const text = (m.medicationCodeableConcept?.text ?? '').toLowerCase();

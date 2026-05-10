@@ -62,10 +62,10 @@ function buildPatientContext(request: MedReviewRequest): PatientContext | null {
   }
 
   const getObsValue = (loincCode: string) =>
-    observations
+    (observations
       .filter(o => o.code?.coding?.some(c => c.code === loincCode))
-      .sort((a, b) => (b.effectiveDateTime ?? '').localeCompare(a.effectiveDateTime ?? ''))
-      [0]?.valueQuantity?.value;
+      .sort((a, b) => (b.effectiveDateTime ?? '').localeCompare(a.effectiveDateTime ?? ''))[0])
+      ?.valueQuantity?.value;
 
   return {
     patient,
@@ -168,18 +168,18 @@ function buildRiskMatrix(
     const cascadeRisk = cascadeFindings
       .filter(f => f.finding.toLowerCase().includes(medNameLower) ||
         f.chain?.some(step => step.fact.toLowerCase().includes(medNameLower)))
-      .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 5) - (SEVERITY_ORDER[b.severity] ?? 5))
-      [0]?.severity ?? 'OK';
+      .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 5) - (SEVERITY_ORDER[b.severity] ?? 5))[0]
+      ?.severity ?? 'OK';
 
     const renalRisk = dosingFindings
       .filter(f => f.medication.toLowerCase().includes(medNameLower) &&
-        f.finding.toLowerCase().includes('renal'))
-      [0]?.severity ?? 'OK';
+        f.finding.toLowerCase().includes('renal'))[0]
+      ?.severity ?? 'OK';
 
     const hepaticRisk = dosingFindings
       .filter(f => f.medication.toLowerCase().includes(medNameLower) &&
-        f.finding.toLowerCase().includes('hepatic'))
-      [0]?.severity ?? 'OK';
+        f.finding.toLowerCase().includes('hepatic'))[0]
+      ?.severity ?? 'OK';
 
     const beersFlag = deprescribingFindings
       .some(f => f.medication.toLowerCase().includes(medNameLower) && !!f.beersFlag);
