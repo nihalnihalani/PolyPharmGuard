@@ -128,3 +128,47 @@
     @apply font-sans;
   }
 }
+
+/* --- Polish-pass design tokens (Claude-flavored, dark-first) ---
+ *
+ * --accent-coral mirrors the Claude brand accent. Reserved for
+ * non-severity UI: primary CTAs, score gauge accent, headline highlights.
+ * Severity scale (red/orange/yellow/gray) is left untouched so coral never
+ * conflicts with CRITICAL/HIGH semantics.
+ *
+ * --font-serif is a system fallback chain (no webfont network load) that
+ * gives a Tiempos-like display feel where it's available and degrades
+ * gracefully to Iowan Old Style / Georgia / serif elsewhere.
+ */
+:root {
+  --accent-coral: #d97757;
+  --accent-coral-soft: #f0b193;
+  --accent-coral-deep: #b85a3e;
+  --font-serif: 'Tiempos Headline', 'Iowan Old Style', Georgia, serif;
+}
+
+.font-serif-display {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.text-accent-coral {
+  color: var(--accent-coral);
+}
+
+.bg-accent-coral {
+  background-color: var(--accent-coral);
+}
+
+.bg-accent-coral-deep {
+  background-color: var(--accent-coral-deep);
+}
+
+.border-accent-coral {
+  border-color: var(--accent-coral);
+}
+
+.hover\:bg-accent-coral-deep:hover {
+  background-color: var(--accent-coral-deep);
+}
